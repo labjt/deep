@@ -23,7 +23,7 @@
     --monster-boss: #ff4444;
     --item-common: #44aacc;
     --item-magic: #aa44ff;
-    --item-gold: #ffcc00;
+    --item-gold: #f7931a;
     --stairs: #ffffff;
     --hp-full: #44cc44;
     --hp-warn: #cccc44;
@@ -522,6 +522,180 @@
     font-family: 'Crimson Text', serif;
     font-style: italic;
   }
+
+  /* ═══════ COMBAT OVERLAY ═══════ */
+  #combat-screen {
+    width: 680px;
+    max-width: 95vw;
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px 24px;
+    box-shadow: 0 0 40px rgba(240, 128, 48, 0.08), inset 0 0 60px rgba(0,0,0,0.4);
+    animation: combatSlideIn 0.3s ease-out;
+  }
+  @keyframes combatSlideIn {
+    from { opacity: 0; transform: translateY(-20px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .combat-flavor {
+    font-family: 'Crimson Text', serif;
+    font-style: italic;
+    color: var(--text-faded);
+    font-size: 13px;
+    text-align: center;
+    min-height: 20px;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+  .combat-arena {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .combat-player-side, .combat-monster-side {
+    flex: 1;
+    min-width: 0;
+  }
+  .combat-label {
+    font-family: 'Fira Code', monospace;
+    font-size: 13px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+  }
+  .combat-player-side .combat-label { color: var(--player); }
+  .combat-monster-side .combat-label.monster-name { color: var(--danger); text-align: center; }
+  .combat-hp-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    font-family: 'Fira Code', monospace;
+    font-size: 11px;
+  }
+  .combat-hp-label { color: var(--text-faded); min-width: 20px; }
+  .combat-hp-text { color: var(--text-main); min-width: 50px; font-size: 10px; }
+  .combat-bar {
+    flex: 1;
+    height: 10px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .combat-bar-fill {
+    height: 100%;
+    border-radius: 1px;
+    transition: width 0.4s ease;
+  }
+  .combat-bar-fill.player-bar { background: linear-gradient(90deg, #cc4444, #44cc44); }
+  .combat-bar-fill.monster-bar { background: linear-gradient(90deg, #cc4444, #cc6644); }
+  .combat-stat-row {
+    font-family: 'Fira Code', monospace;
+    font-size: 10px;
+    color: var(--text-faded);
+    display: flex;
+    gap: 12px;
+  }
+  .combat-monster-art {
+    font-family: 'Fira Code', monospace;
+    font-size: 11px;
+    line-height: 1.2;
+    text-align: center;
+    margin-bottom: 6px;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-main);
+  }
+  .combat-center {
+    flex: 0 0 160px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
+  }
+  .combat-dice-area {
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .combat-dice {
+    font-family: 'Fira Code', monospace;
+    font-size: 42px;
+    font-weight: bold;
+    color: var(--accent);
+    min-width: 60px;
+    text-align: center;
+    line-height: 1;
+    text-shadow: 0 0 12px rgba(240, 128, 48, 0.4);
+  }
+  .combat-dice.rolling {
+    animation: diceFlicker 0.08s infinite;
+  }
+  @keyframes diceFlicker {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+  }
+  .combat-dice.crit { color: var(--player); text-shadow: 0 0 20px rgba(240, 192, 64, 0.8); }
+  .combat-dice.miss { color: var(--text-faded); text-shadow: none; }
+  .combat-dice-label {
+    font-family: 'Fira Code', monospace;
+    font-size: 10px;
+    color: var(--text-faded);
+    margin-top: 2px;
+  }
+  .combat-roll-math {
+    font-family: 'Fira Code', monospace;
+    font-size: 11px;
+    color: var(--text-faded);
+    text-align: center;
+    min-height: 16px;
+    margin-bottom: 4px;
+  }
+  .combat-result {
+    font-family: 'Fira Code', monospace;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+    min-height: 20px;
+    letter-spacing: 1px;
+  }
+  .combat-result.hit { color: var(--player); animation: resultFlash 0.4s ease; }
+  .combat-result.miss-result { color: var(--text-faded); }
+  .combat-result.crit-result { color: #ff4444; animation: resultFlash 0.4s ease; text-shadow: 0 0 16px rgba(255,68,68,0.6); }
+  .combat-result.monster-hit { color: var(--danger); animation: resultFlash 0.4s ease; }
+  .combat-result.slain { color: var(--player); font-size: 18px; animation: resultFlash 0.6s ease; text-shadow: 0 0 20px rgba(240,192,64,0.6); }
+  @keyframes resultFlash {
+    0% { transform: scale(1.4); opacity: 0.6; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .combat-log {
+    font-family: 'Fira Code', monospace;
+    font-size: 11px;
+    color: var(--text-main);
+    min-height: 24px;
+    text-align: center;
+    margin-bottom: 8px;
+    line-height: 1.6;
+  }
+  .combat-log .combat-special { color: var(--xp); }
+  .combat-prompt {
+    font-family: 'Fira Code', monospace;
+    font-size: 11px;
+    color: var(--text-faded);
+    text-align: center;
+    animation: promptPulse 1.5s ease-in-out infinite;
+  }
+  @keyframes promptPulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
 </style>
 </head>
 <body>
@@ -585,6 +759,49 @@
   <div id="death-screen">
     <pre class="tombstone" id="tombstone-art"></pre>
     <div class="death-prompt">Press ENTER to return to the abyss</div>
+  </div>
+</div>
+
+<!-- Combat Encounter -->
+<div id="combat-overlay" class="overlay hidden">
+  <div id="combat-screen">
+    <div class="combat-flavor" id="combat-flavor"></div>
+    <div class="combat-arena">
+      <div class="combat-player-side">
+        <div class="combat-label" id="combat-player-name"></div>
+        <div class="combat-hp-row">
+          <span class="combat-hp-label">HP</span>
+          <div class="combat-bar"><div class="combat-bar-fill player-bar" id="combat-player-hp"></div></div>
+          <span class="combat-hp-text" id="combat-player-hp-text"></span>
+        </div>
+        <div class="combat-stat-row">
+          <span id="combat-player-ac"></span>
+          <span id="combat-player-weapon"></span>
+        </div>
+      </div>
+      <div class="combat-center">
+        <div class="combat-dice-area">
+          <div class="combat-dice" id="combat-dice">20</div>
+          <div class="combat-dice-label">d20</div>
+        </div>
+        <div class="combat-roll-math" id="combat-roll-math"></div>
+        <div class="combat-result" id="combat-result"></div>
+      </div>
+      <div class="combat-monster-side">
+        <pre class="combat-monster-art" id="combat-monster-art"></pre>
+        <div class="combat-label monster-name" id="combat-monster-name"></div>
+        <div class="combat-hp-row">
+          <span class="combat-hp-label">HP</span>
+          <div class="combat-bar"><div class="combat-bar-fill monster-bar" id="combat-monster-hp"></div></div>
+          <span class="combat-hp-text" id="combat-monster-hp-text"></span>
+        </div>
+        <div class="combat-stat-row">
+          <span id="combat-monster-ac"></span>
+        </div>
+      </div>
+    </div>
+    <div class="combat-log" id="combat-log"></div>
+    <div class="combat-prompt" id="combat-prompt">Press SPACE to attack</div>
   </div>
 </div>
 
@@ -716,6 +933,246 @@ const BESTIARY = {
   dragon:   { ch:'D', color:'#ff4444', name:'Ancient Dragon', hp:80, ac:20, atk:12, dmg:[3,8,6], xp:500, behavior:'stationary', tier:4, special:'breath' }
 };
 
+const MONSTER_ART = {
+  rat: `
+      /\\._./\\
+     ( o   o )
+      >  ^  <
+     /|     |\\
+    (_|     |_)`,
+  bat: `
+       /\\  /\\
+      /  \\/  \\
+     / /\\  /\\ \\
+     \\/  \\/  \\/
+       \\    /
+        \\  /
+         \\/`,
+  goblin: `
+       ,---.
+      /  o o\\
+      | \\_^_/|
+      /|  =  |\\
+     / | HHH | \\
+       |_| |_|
+       d_| |_b`,
+  kobold: `
+      _/\\_
+     / o o\\
+     \\ == /
+    --|++++|--
+      | || |
+      |_||_|
+      /_/\\_\\`,
+  orc: `
+      ___
+     /o  o\\
+    ( \\vv/ )
+     |\\  /|
+    /| \\/ |\\
+    ||_/\\_||
+     |_||_|`,
+  skeleton: `
+      .-.
+     (o.o)
+      |=|
+     d|=|b
+      |=|
+     /|=|\\
+    (_/ \\_)`,
+  spider: `
+     /\\ () /\\
+    /  \\;;/  \\
+   / /\\ \\/ /\\ \\
+   \\ \\/    \\/ /
+    \\  (oo)  /
+     \\'--''/
+      '-..-'`,
+  ogre: `
+      ,---.
+     /O   O\\
+    | \\___/ |
+    |  ===  |
+   /|       |\\
+  / |=======| \\
+    |_|   |_|`,
+  troll: `
+     _,,,_
+    /o   O\\
+   ( \\_W_/ )
+    |  |  |
+   /| /_\\ |\\
+   ||/   \\||
+   |_|   |_|`,
+  wraith: `
+    .  _  .
+   / \\/ \\/ \\
+  ( (o  o) )
+   \\ \\~~/ /
+    \\|  |/
+    /|  |\\
+  ~~ ~~~~ ~~`,
+  vampire: `
+   \\\\    //
+    \\\\  //
+     (oo)
+    /|  |\\
+   ( |\\/| )
+    \\|  |/
+     |--|
+    _/  \\_`,
+  golem: `
+    [====]
+    |o  o|
+    | -- |
+   /|====|\\
+  [=|    |=]
+   ||    ||
+   |_|  |_|`,
+  dragon: `
+        /\\_/\\
+    ===/ o o \\===
+   /    \\___/    \\
+  /   ___|||___   \\
+  \\__/  ||||  \\__/
+       / || \\
+      /  ||  \\
+   ~~~~~~~~~~~~~~`
+};
+
+const MONSTER_FLAVOR = {
+  rat: [
+    'A massive rat hisses from the shadows, its eyes gleaming with feral hunger.',
+    'Something skitters in the dark — a rat the size of a dog blocks your path.',
+    'The stench hits you first. A giant rat crouches ahead, baring yellowed fangs.'
+  ],
+  bat: [
+    'A shriek echoes from above. Leathery wings unfurl in the darkness.',
+    'The flutter of wings — a cave bat dives toward you from the ceiling.',
+    'You disturb a roosting bat. It drops from the shadows with a screech.'
+  ],
+  goblin: [
+    'A goblin emerges from the shadows, its crude blade scraping against stone.',
+    'Beady eyes glint in the dark. A goblin snarls and raises its weapon.',
+    'A high-pitched cackle echoes ahead. A goblin steps into view, grinning wickedly.'
+  ],
+  kobold: [
+    'A small reptilian figure darts from behind a pillar, hissing threats.',
+    'A kobold shrieks a war cry far too loud for its tiny frame.',
+    'Scales glitter in the torchlight. A kobold brandishes a jagged blade.'
+  ],
+  orc: [
+    'A hulking orc steps from the shadows, tusks bared in a savage grin.',
+    'The ground trembles with heavy footfalls. An orc blocks your path, axe raised.',
+    'A guttural roar fills the corridor. An orc charges from the darkness.'
+  ],
+  skeleton: [
+    'Bones clatter as a skeletal figure rises from the ground, empty sockets blazing.',
+    'A skeleton lurches forward, its jaw hanging open in a silent scream.',
+    'The dead do not rest here. A skeleton turns toward you, sword scraping stone.'
+  ],
+  spider: [
+    'Webs cling to your face. A massive spider descends from above on a silk thread.',
+    'Eight eyes reflect your torchlight. A giant spider skitters toward you.',
+    'The clicking of mandibles. A spider the size of a horse emerges from its web.'
+  ],
+  ogre: [
+    'The ceiling shakes. A massive ogre ducks through a doorway, club in hand.',
+    'A stench like rotting meat precedes the ogre. It spots you and grins.',
+    'An ogre bellows, the sound reverberating through the stone chamber.'
+  ],
+  troll: [
+    'The air thickens with the reek of swamp and decay. A troll looms before you.',
+    'Green flesh knits itself together before your eyes. The troll is already regenerating.',
+    'A troll blocks the passage, its long arms nearly touching the walls on both sides.'
+  ],
+  wraith: [
+    'The temperature plummets. A spectral figure glides through the wall toward you.',
+    'A chill runs down your spine. The wraith materializes from the darkness itself.',
+    'Your torch gutters and dims. A wraith drifts forward, reaching with ghostly claws.'
+  ],
+  vampire: [
+    'A pale figure steps from the shadows, eyes burning with ancient hunger.',
+    'The darkness coalesces into a regal form. The vampire smiles, revealing fangs.',
+    'A cold voice whispers your name. The vampire has been expecting you.'
+  ],
+  golem: [
+    'Iron plates grind together as the golem activates, eyes flaring with arcane light.',
+    'A construct of iron and dark magic stands guard. It turns to face you with a metallic groan.',
+    'The iron golem was motionless — a statue. Now it moves, each step shaking the floor.'
+  ],
+  dragon: [
+    'The cavern opens into a vast chamber. Atop a mountain of Bitcoin, the dragon stirs.',
+    'Heat washes over you like a furnace door opening. The ancient dragon raises its head.',
+    'Smoke curls from nostrils like chimneys. The dragon fixes you with an eye older than empires.'
+  ]
+};
+
+const ROOM_DESCRIPTIONS = [
+  // Tier 0: Floors 1-3 — Caverns
+  [
+    'The chamber opens up. Stalactites hang like stone teeth from the ceiling.',
+    'Water pools in the corners of this room, still and dark.',
+    'Rat droppings litter the floor. Something was nesting here recently.',
+    'Crude scratches mark the walls — tally marks, perhaps, from some prior prisoner.',
+    'A draft of cold air brushes past you. There must be another passage nearby.',
+    'Moss clings to the damp walls. Mushrooms cluster in the corners.',
+    'The stone here is worn smooth by the passage of countless feet — or claws.',
+    'A collapsed section of wall reveals rough-hewn rock beyond.',
+    'Empty iron sconces line the walls. Someone once lit these halls.',
+    'The ceiling is low here. You crouch instinctively.',
+    'A foul smell wafts from a crack in the floor.',
+    'Old bones lie scattered — animal, you hope.',
+    'Torchlight catches something glinting in a wall crevice.',
+    'The echo of your footsteps sounds wrong here, as if the room is larger than it appears.',
+    'Cobwebs hang in thick curtains across the doorway.'
+  ],
+  // Tier 1: Floors 4-6 — Crypts and warrens
+  [
+    'Stone coffins line the walls, their lids askew.',
+    'The walls are carved with names and dates — a catacomb of the forgotten.',
+    'Candles flicker in alcoves though no one tends them.',
+    'A cold wind moans through this chamber like a dying breath.',
+    'Bones are arranged in decorative patterns along the walls — someone took care with these dead.',
+    'An altar stands in the center, stained dark with ancient offerings.',
+    'The floor is flooded ankle-deep. Something ripples in the dark water.',
+    'Iron cages hang from the ceiling, some still occupied by skeletal remains.',
+    'Funerary urns sit on stone shelves, many shattered and empty.',
+    'The air tastes of embalming spices and dust.',
+    'Grave goods lie scattered — someone has been looting these tombs.',
+    'A statue of a weeping figure guards this room, its face worn smooth.',
+    'Chains dangle from the walls. This was a prison once.',
+    'The walls seep moisture that smells faintly of copper.',
+    'Faded murals depict scenes of judgment and descent.'
+  ],
+  // Tier 2: Floors 7-9 — Deep/volcanic
+  [
+    'The rock here is warm to the touch. Fissures glow with dim red light.',
+    'Crystals jut from the walls, refracting your torchlight into fractured rainbows.',
+    'The air shimmers with heat. Sweat beads on your brow instantly.',
+    'A chasm splits the chamber floor. You can hear something far below.',
+    'Strange symbols are burned into the stone — not carved, burned.',
+    'Obsidian pillars rise from floor to ceiling, smooth as glass.',
+    'The walls pulse with a faint heartbeat rhythm. Or perhaps that is your own.',
+    'Molten rock drips from a crack above, pooling in a glowing puddle.',
+    'Ancient dwarven machinery sits rusted and silent along one wall.',
+    'The stone here is black and glassy. Your reflection stares back, distorted.',
+    'Sulfurous fumes vent from cracks in the floor.',
+    'A forge sits cold and dark, but the metal on its anvil still glows faintly.',
+    'The ceiling is impossibly high here, lost in darkness above.',
+    'Something massive gouged claw marks into the stone floor.',
+    'The air crackles with residual magic. Your hair stands on end.'
+  ],
+  // Tier 3: Floor 10 — Dragon's domain
+  [
+    'Bitcoin tokens crunch underfoot. This is the dragon\'s outer wallet.',
+    'Scorched skeletons of adventurers line the walls — a warning.',
+    'The heat is nearly unbearable. The very air seems to burn.',
+    'Treasure beyond imagining glitters in the firelight.',
+    'The walls bear the marks of dragon fire — stone melted and reformed.'
+  ]
+];
+
 const WEAPONS = [
   { name:'Dagger',     dmg:[1,4,0],  stat:'dex', weight:1,  value:5,   ch:'/' },
   { name:'Mace',       dmg:[1,6,0],  stat:'str', weight:3,  value:15,  ch:'/' },
@@ -804,6 +1261,8 @@ function sfxStairs()   { for(let i=0;i<6;i++) playNote(200+i*80,'sine',0.1,0.03,
 function sfxLevelUp()  { [523,659,784,1047].forEach((f,i) => playNote(f,'sine',0.15,0.06,i*0.12)); }
 function sfxDeath()    { [220,196,165,147,110].forEach((f,i) => playNote(f,'sawtooth',0.3,0.07,i*0.2)); }
 function sfxStep()     { playNote(100+Math.random()*40,'triangle',0.03,0.015); }
+function sfxDiceRoll() { for(let i=0;i<8;i++) playNote(800+Math.random()*400,'square',0.02,0.02,i*0.07); }
+function sfxCritical() { [880,1108,1320,1760].forEach((f,i) => playNote(f,'sawtooth',0.12,0.06,i*0.06)); playNote(440,'sine',0.3,0.04,0.3); }
 
 // ════════════════════════════════════════════════════
 // SECTION 5: GAME STATE
@@ -812,7 +1271,7 @@ function sfxStep()     { playNote(100+Math.random()*40,'triangle',0.03,0.015); }
 const GS = {
   TITLE:'title', CHAR_CREATE:'charCreate', PLAYING:'playing',
   INVENTORY:'inventory', CHARACTER:'character', LEVEL_UP:'levelUp',
-  TARGETING:'targeting', DEAD:'dead', HELP:'help'
+  TARGETING:'targeting', DEAD:'dead', HELP:'help', COMBAT:'combat'
 };
 
 let gameState = GS.TITLE;
@@ -828,6 +1287,13 @@ let messageLog = [];
 // Character creation state
 let createStep = 0; // 0=name, 1=race, 2=class, 3=stats
 let createData = { name:'', race:null, cls:null, stats:null, rerolls:3 };
+
+// Combat overlay state
+let combatMonster = null;
+let combatPhase = 'idle'; // idle, player_roll, player_result, monster_roll, monster_result, ended
+let combatAnimating = false;
+let seenMonsters = new Set();
+let visitedRooms = new Set();
 
 // ════════════════════════════════════════════════════
 // SECTION 6: DUNGEON GENERATION
@@ -1051,7 +1517,7 @@ function spawnItems(rooms, floorLevel) {
       let item;
       if (roll < 0.25) {
         // Gold
-        item = { type:'gold', name:'Gold', ch:'$', color:'#ffcc00', amount: rollDice(floorLevel, 6, floorLevel * 2), x:ix, y:iy };
+        item = { type:'gold', name:'Bitcoin', ch:'\u20BF', color:'#f7931a', amount: rollDice(floorLevel, 6, floorLevel * 2), x:ix, y:iy };
       } else if (roll < 0.6) {
         // Potion — weighted toward healing
         const potionRoll = Math.random();
@@ -1226,6 +1692,7 @@ function monsterAttackPlayer(monster) {
 function processMonsterTurns() {
   for (const m of monsters) {
     if (m.curHp <= 0) continue;
+    if (combatMonster && m.id === combatMonster.id) continue; // Handled by combat overlay
 
     // Regen
     if (m.special === 'regen' && m.curHp < m.maxHp) {
@@ -1379,7 +1846,7 @@ function renderStats() {
   html += '</div>';
 
   // AC
-  html += `<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">AC: <span style="color:var(--text-bright)">${p.ac}</span> &nbsp; Gold: <span style="color:var(--item-gold)">${p.goldCollected}</span></div>`;
+  html += `<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">AC: <span style="color:var(--text-bright)">${p.ac}</span> &nbsp; \u20BF: <span style="color:var(--item-gold)">${p.goldCollected}</span></div>`;
 
   // Equipment
   html += '<div class="equip-section"><h3>EQUIPMENT</h3>';
@@ -1518,6 +1985,8 @@ function enterFloor(floorLevel, fromStairs) {
 
   // Reset Halfling luck per floor
   player.luckyUsed = false;
+  // Reset room visit tracking for new floor
+  visitedRooms = new Set();
   // Reset Cleric heals per floor
   if (player.cls === 'cleric') player.healsRemaining = 3 + Math.floor(player.level / 2);
 
@@ -1571,6 +2040,414 @@ function fadeTransition(callback) {
 }
 
 // ════════════════════════════════════════════════════
+// SECTION 13B: COMBAT ENCOUNTER OVERLAY
+// ════════════════════════════════════════════════════
+
+function getMonsterKey(monster) {
+  return monster.id.replace(/_\d+$/, '');
+}
+
+function startCombat(monster) {
+  combatMonster = monster;
+  combatPhase = 'idle';
+  combatAnimating = false;
+  gameState = GS.COMBAT;
+  player.lastCombatTurn = player.turnsPlayed;
+
+  const overlay = document.getElementById('combat-overlay');
+  overlay.classList.remove('hidden');
+
+  // Monster art and info
+  const key = getMonsterKey(monster);
+  const art = MONSTER_ART[key] || '';
+  document.getElementById('combat-monster-art').textContent = art;
+  document.getElementById('combat-monster-art').style.color = monster.color;
+  document.getElementById('combat-monster-name').textContent = monster.name;
+  document.getElementById('combat-monster-ac').textContent = 'AC ' + monster.ac;
+
+  // Player info
+  document.getElementById('combat-player-name').textContent = player.name;
+  const wep = player.equipment.weapon;
+  document.getElementById('combat-player-ac').textContent = 'AC ' + player.ac;
+  document.getElementById('combat-player-weapon').textContent = wep ? wep.name : 'Unarmed';
+
+  // Clear previous state
+  document.getElementById('combat-dice').textContent = '?';
+  document.getElementById('combat-dice').className = 'combat-dice';
+  document.getElementById('combat-roll-math').textContent = '';
+  document.getElementById('combat-result').textContent = '';
+  document.getElementById('combat-result').className = 'combat-result';
+  document.getElementById('combat-log').innerHTML = '';
+
+  updateCombatHP();
+
+  // Flavor text
+  const flavorEl = document.getElementById('combat-flavor');
+  if (!seenMonsters.has(key)) {
+    seenMonsters.add(key);
+    const flavors = MONSTER_FLAVOR[key] || [];
+    flavorEl.textContent = flavors.length > 0 ? pick(flavors) : '';
+  } else {
+    // Short repeat text
+    const shortFlavors = [
+      `A ${monster.name} stands before you.`,
+      `Another ${monster.name} blocks your path.`,
+      `You face a ${monster.name} once more.`
+    ];
+    flavorEl.textContent = pick(shortFlavors);
+  }
+
+  document.getElementById('combat-prompt').textContent = 'Press SPACE to attack \u2022 ESC to flee';
+  document.getElementById('combat-prompt').style.display = '';
+}
+
+function updateCombatHP() {
+  if (!combatMonster) return;
+  const m = combatMonster;
+  const mPct = Math.max(0, (m.curHp / m.maxHp) * 100);
+  document.getElementById('combat-monster-hp').style.width = mPct + '%';
+  document.getElementById('combat-monster-hp-text').textContent = Math.max(0, m.curHp) + '/' + m.maxHp;
+
+  const pPct = Math.max(0, (player.hp / player.maxHp) * 100);
+  document.getElementById('combat-player-hp').style.width = pPct + '%';
+  document.getElementById('combat-player-hp-text').textContent = Math.max(0, player.hp) + '/' + player.maxHp;
+}
+
+function animateDiceRoll(finalValue, duration, callback) {
+  combatAnimating = true;
+  const diceEl = document.getElementById('combat-dice');
+  diceEl.className = 'combat-dice rolling';
+  sfxDiceRoll();
+
+  const interval = 60;
+  let elapsed = 0;
+  const timer = setInterval(() => {
+    diceEl.textContent = rand(1, 20);
+    elapsed += interval;
+    if (elapsed >= duration) {
+      clearInterval(timer);
+      diceEl.textContent = finalValue;
+      diceEl.className = 'combat-dice';
+      if (finalValue === 20) diceEl.classList.add('crit');
+      if (finalValue === 1) diceEl.classList.add('miss');
+      combatAnimating = false;
+      if (callback) callback();
+    }
+  }, interval);
+}
+
+function combatPlayerAttack() {
+  if (combatAnimating) return;
+  combatPhase = 'player_roll';
+  document.getElementById('combat-prompt').style.display = 'none';
+  document.getElementById('combat-result').textContent = '';
+  document.getElementById('combat-result').className = 'combat-result';
+  document.getElementById('combat-roll-math').textContent = '';
+  document.getElementById('combat-log').innerHTML = '';
+
+  const roll = rollDie(20);
+  const mod = getPlayerAttackMod();
+  const total = roll + mod;
+  const monster = combatMonster;
+  const hit = roll === 20 || (roll !== 1 && total >= monster.ac);
+  const crit = roll === 20;
+  const nat1 = roll === 1;
+
+  animateDiceRoll(roll, 700, () => {
+    // Show math
+    document.getElementById('combat-roll-math').textContent =
+      `${roll} + ${mod} = ${total} vs AC ${monster.ac}`;
+
+    setTimeout(() => {
+      combatPhase = 'player_result';
+      const resultEl = document.getElementById('combat-result');
+      const logEl = document.getElementById('combat-log');
+
+      if (nat1) {
+        resultEl.textContent = 'MISS!';
+        resultEl.className = 'combat-result miss-result';
+        sfxMiss();
+        addLog(`You swing wildly at the ${monster.name}... <span class="log-miss">(nat 1) MISS!</span>`);
+      } else if (hit) {
+        let dmg = getPlayerDamage();
+        if (crit) {
+          dmg += getPlayerDamage();
+          sfxCritical();
+        } else {
+          sfxHit();
+        }
+        dmg = Math.max(1, dmg);
+        monster.curHp -= dmg;
+
+        if (crit) {
+          resultEl.textContent = 'CRITICAL! ' + dmg + ' DMG';
+          resultEl.className = 'combat-result crit-result';
+        } else {
+          resultEl.textContent = 'HIT! ' + dmg + ' DMG';
+          resultEl.className = 'combat-result hit';
+        }
+        updateCombatHP();
+
+        const rollStr = `(${roll}${crit ? '!!' : ''} + ${mod} = ${total} vs AC ${monster.ac})`;
+        if (monster.curHp <= 0) {
+          addLog(`You strike the ${monster.name}! <span class="log-info">${rollStr}</span> <span class="log-damage">${dmg} dmg</span> \u2014 <span class="log-kill">SLAIN!</span>`);
+          const xpGain = Math.floor(monster.xp * (player.race === 'human' ? 1.1 : 1));
+          player.xp += xpGain;
+          player.monstersKilled++;
+          addLog(`<span class="log-xp">+${xpGain} XP</span>`);
+
+          setTimeout(() => {
+            resultEl.textContent = '\u2620 SLAIN! +' + xpGain + ' XP';
+            resultEl.className = 'combat-result slain';
+            sfxKill();
+            setTimeout(() => endCombat('killed'), 1200);
+          }, 400);
+          return;
+        } else {
+          addLog(`You hit the ${monster.name}! <span class="log-info">${rollStr}</span> <span class="log-damage">${dmg} dmg</span> (${monster.curHp}/${monster.maxHp})`);
+          logEl.innerHTML = `${monster.name}: ${monster.curHp}/${monster.maxHp} HP`;
+        }
+      } else {
+        resultEl.textContent = 'MISS!';
+        resultEl.className = 'combat-result miss-result';
+        sfxMiss();
+        addLog(`You miss the ${monster.name}. <span class="log-info">(${roll} + ${mod} = ${total} vs AC ${monster.ac})</span> <span class="log-miss">MISS</span>`);
+      }
+
+      // Monster counter-attack after delay
+      if (monster.curHp > 0) {
+        setTimeout(() => combatMonsterAttack(), 800);
+      }
+    }, 300);
+  });
+}
+
+function combatMonsterAttack() {
+  if (!combatMonster || combatMonster.curHp <= 0) return;
+  combatPhase = 'monster_roll';
+  const monster = combatMonster;
+
+  document.getElementById('combat-result').textContent = '';
+  document.getElementById('combat-result').className = 'combat-result';
+  document.getElementById('combat-roll-math').textContent = '';
+  document.getElementById('combat-log').innerHTML = `${monster.name} attacks!`;
+
+  // Dragon breath weapon
+  if (monster.special === 'breath' && Math.random() < 0.3) {
+    animateDiceRoll(rand(1, 20), 600, () => {
+      const save = rollDie(20) + statMod(player.stats.dex);
+      const dmg = rollDice(4, 6, 0);
+      const resultEl = document.getElementById('combat-result');
+      document.getElementById('combat-roll-math').textContent = `DEX save: ${save} vs DC 15`;
+
+      setTimeout(() => {
+        if (save < 15) {
+          player.hp -= dmg;
+          resultEl.textContent = '\ud83d\udd25 BREATH! ' + dmg + ' DMG';
+          resultEl.className = 'combat-result monster-hit';
+          addLog(`<span class="log-player-hit">The ${monster.name} breathes fire! ${dmg} damage!</span>`);
+        } else {
+          const halfDmg = Math.floor(dmg / 2);
+          player.hp -= halfDmg;
+          resultEl.textContent = '\ud83d\udd25 BREATH! ' + halfDmg + ' DMG (saved)';
+          resultEl.className = 'combat-result monster-hit';
+          addLog(`<span class="log-player-hit">The ${monster.name} breathes fire! You dodge partially \u2014 ${halfDmg} damage!</span>`);
+        }
+        sfxPlayerHit();
+        updateCombatHP();
+        combatPhase = 'monster_result';
+        finishMonsterTurn(monster);
+      }, 300);
+    });
+    return;
+  }
+
+  // Normal monster attack
+  const roll = rollDie(20);
+  const total = roll + monster.atk;
+  const hit = roll === 20 || (roll !== 1 && total >= player.ac);
+
+  animateDiceRoll(roll, 600, () => {
+    document.getElementById('combat-roll-math').textContent =
+      `${roll} + ${monster.atk} = ${total} vs AC ${player.ac}`;
+
+    setTimeout(() => {
+      combatPhase = 'monster_result';
+      const resultEl = document.getElementById('combat-result');
+
+      if (hit) {
+        let dmg = rollDmg(monster.dmg);
+        if (roll === 20) dmg += rollDmg(monster.dmg);
+        dmg = Math.max(1, dmg);
+        player.hp -= dmg;
+
+        if (roll === 20) {
+          resultEl.textContent = 'CRITICAL! ' + dmg + ' DMG';
+          resultEl.className = 'combat-result crit-result';
+        } else {
+          resultEl.textContent = monster.name.toUpperCase() + ' HITS! ' + dmg + ' DMG';
+          resultEl.className = 'combat-result monster-hit';
+        }
+        sfxPlayerHit();
+        addLog(`The ${monster.name} hits you! <span class="log-player-hit">${dmg} dmg</span> (HP: ${Math.max(0,player.hp)}/${player.maxHp})`);
+
+        // Special effects
+        const logEl = document.getElementById('combat-log');
+        if (monster.special === 'poison' && Math.random() < 0.3) {
+          const save = rollDie(20) + statMod(player.stats.con);
+          if (save < 12 + player.floorLevel) {
+            player.conditions.push({ type:'poisoned', duration: 5, dmg: 1 });
+            logEl.innerHTML += '<br><span class="combat-special">You are poisoned!</span>';
+            addLog(`<span class="log-player-hit">You are poisoned!</span>`);
+          }
+        }
+        if (monster.special === 'drain') {
+          const drainHp = rand(1, 3);
+          monster.curHp = Math.min(monster.maxHp, monster.curHp + drainHp);
+          logEl.innerHTML += '<br><span class="combat-special">Life force drained! (+' + drainHp + ' HP to ' + monster.name + ')</span>';
+          addLog(`<span class="log-player-hit">The ${monster.name} drains your life force!</span>`);
+        }
+      } else {
+        resultEl.textContent = monster.name.toUpperCase() + ' MISSES!';
+        resultEl.className = 'combat-result miss-result';
+        addLog(`The ${monster.name} misses you. <span class="log-miss">(${roll} + ${monster.atk} = ${total} vs AC ${player.ac})</span>`);
+      }
+
+      updateCombatHP();
+      finishMonsterTurn(monster);
+    }, 300);
+  });
+}
+
+function finishMonsterTurn(monster) {
+  // Check player death
+  if (player.hp <= 0) {
+    player.hp = 0;
+    updateCombatHP();
+    setTimeout(() => {
+      endCombat('dead');
+    }, 800);
+    return;
+  }
+
+  // Ready for next round
+  setTimeout(() => {
+    const promptEl = document.getElementById('combat-prompt');
+    promptEl.textContent = 'Press SPACE to attack \u2022 ESC to flee';
+    promptEl.style.display = '';
+    combatPhase = 'idle';
+  }, 600);
+}
+
+function endCombat(result) {
+  const overlay = document.getElementById('combat-overlay');
+  overlay.classList.add('hidden');
+  combatPhase = 'idle';
+
+  if (result === 'killed') {
+    // Warrior cleave check
+    if (player.cls === 'warrior') {
+      const adj = monsters.filter(m => m.curHp > 0 && Math.abs(m.x - player.x) <= 1 && Math.abs(m.y - player.y) <= 1);
+      if (adj.length > 0) {
+        addLog('<span class="log-kill">Cleave!</span>');
+        // Start combat with the next adjacent monster
+        setTimeout(() => startCombat(adj[0]), 300);
+        return;
+      }
+    }
+
+    combatMonster = null;
+    gameState = GS.PLAYING;
+
+    // Process rest of turn
+    player.turnsPlayed++;
+    processMonsterTurns();
+    processConditions();
+    processNaturalRegen();
+    computeFOV(currentMap, player.x, player.y, player.visionRadius);
+    renderAll();
+    checkPlayerDeath();
+    if (gameState === GS.PLAYING) checkLevelUp();
+
+  } else if (result === 'dead') {
+    combatMonster = null;
+    gameState = GS.PLAYING;
+    sfxDeath();
+    gameState = GS.DEAD;
+    showDeathScreen();
+
+  } else if (result === 'fled') {
+    combatMonster = null;
+    gameState = GS.PLAYING;
+    renderAll();
+  }
+}
+
+function combatFlee() {
+  if (combatAnimating) return;
+  const monster = combatMonster;
+
+  // Opportunity attack
+  addLog(`<span class="log-info">You attempt to flee from the ${monster.name}!</span>`);
+
+  // Monster gets a free attack (50% hit chance simplified)
+  const roll = rollDie(20);
+  const total = roll + monster.atk;
+  const hit = roll === 20 || (roll !== 1 && total >= player.ac);
+  if (hit) {
+    let dmg = rollDmg(monster.dmg);
+    dmg = Math.max(1, dmg);
+    player.hp -= dmg;
+    addLog(`<span class="log-player-hit">The ${monster.name} strikes as you flee! ${dmg} dmg</span>`);
+    sfxPlayerHit();
+  } else {
+    addLog(`<span class="log-info">The ${monster.name} swings but misses as you flee!</span>`);
+  }
+
+  if (player.hp <= 0) {
+    player.hp = 0;
+    endCombat('dead');
+    return;
+  }
+
+  // Move player away from monster if possible
+  const dx = player.x - monster.x;
+  const dy = player.y - monster.y;
+  const nx = player.x + Math.sign(dx);
+  const ny = player.y + Math.sign(dy);
+  if (nx >= 0 && nx < MAP_W && ny >= 0 && ny < MAP_H &&
+      currentMap[ny][nx].type !== TILE.WALL && !getMonsterAt(nx, ny)) {
+    player.x = nx;
+    player.y = ny;
+  }
+
+  endCombat('fled');
+
+  // Still process the turn
+  player.turnsPlayed++;
+  processMonsterTurns();
+  processConditions();
+  processNaturalRegen();
+  computeFOV(currentMap, player.x, player.y, player.visionRadius);
+  renderAll();
+  checkPlayerDeath();
+}
+
+function handleCombatInput(e) {
+  if (combatAnimating) return;
+  if (e.key === ' ' || e.key === 'Spacebar') {
+    e.preventDefault();
+    if (combatPhase === 'idle') {
+      combatPlayerAttack();
+    }
+  } else if (e.key === 'Escape') {
+    if (combatPhase === 'idle') {
+      combatFlee();
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════
 // SECTION 14: PLAYER ACTIONS
 // ════════════════════════════════════════════════════
 
@@ -1582,25 +2459,33 @@ function tryMove(dx, dy) {
   const tile = currentMap[ny][nx];
   if (tile.type === TILE.WALL) return false;
 
-  // Monster?
+  // Monster? Launch combat overlay instead of inline attack
   const monster = getMonsterAt(nx, ny);
   if (monster) {
-    const result = attackMonster(monster);
-    // Warrior cleave
-    if (result === 'killed' && player.cls === 'warrior') {
-      const adj = monsters.filter(m => m.curHp > 0 && Math.abs(m.x - player.x) <= 1 && Math.abs(m.y - player.y) <= 1);
-      if (adj.length > 0) {
-        addLog('<span class="log-kill">Cleave!</span>');
-        attackMonster(adj[0]);
-      }
-    }
-    return true;
+    startCombat(monster);
+    return false; // Don't process normal turn — combat handles it
   }
 
   // Move
   player.x = nx;
   player.y = ny;
   sfxStep();
+
+  // Room description check
+  for (let i = 1; i < currentRooms.length; i++) {
+    const r = currentRooms[i];
+    if (nx >= r.x && nx < r.x + r.w && ny >= r.y && ny < r.y + r.h) {
+      const roomId = player.floorLevel + '_' + i;
+      if (!visitedRooms.has(roomId) && Math.random() < 0.4) {
+        visitedRooms.add(roomId);
+        const tier = player.floorLevel <= 3 ? 0 : player.floorLevel <= 6 ? 1 : player.floorLevel <= 9 ? 2 : 3;
+        addNarrative(pick(ROOM_DESCRIPTIONS[tier]));
+      } else {
+        visitedRooms.add(roomId);
+      }
+      break;
+    }
+  }
 
   // Trap?
   if (tile.type === TILE.TRAP && !tile.revealed) {
@@ -1704,7 +2589,7 @@ function tryPickup() {
   }
   if (item.type === 'gold') {
     player.goldCollected += item.amount;
-    addLog(`<span class="log-gold">You pick up ${item.amount} gold.</span>`);
+    addLog(`<span class="log-gold">You pick up ${item.amount} Bitcoin.</span>`);
     sfxGold();
   } else {
     if (player.inventory.length >= MAX_INVENTORY) {
@@ -2046,7 +2931,9 @@ function showHelp() {
       <div class="help-row"><kbd>?</kbd><span>This help screen</span></div>
     </div>
     <div class="help-section"><h3>COMBAT</h3>
-      <div class="help-row"><kbd>Move into</kbd><span>Melee attack a monster</span></div>
+      <div class="help-row"><kbd>Move into</kbd><span>Engage a monster (opens combat)</span></div>
+      <div class="help-row"><kbd>SPACE</kbd><span>Attack in combat</span></div>
+      <div class="help-row"><kbd>ESC</kbd><span>Flee from combat</span></div>
     </div>
     <div style="margin-top:12px;color:var(--text-faded);font-size:11px;">Press ESC or ? to close</div>
   `;
@@ -2106,7 +2993,7 @@ function showDeathScreen() {
       |                |
       |  Turns: ${String(player.turnsPlayed).padEnd(7)}|
       |  Kills: ${String(player.monstersKilled).padEnd(7)}|
-      |  Gold:  ${String(player.goldCollected).padEnd(7)}|
+      |  BTC:   ${String(player.goldCollected).padEnd(7)}|
       |                |
        \\  Score: ${String(score).padEnd(6)}/
         \\______________/
@@ -2161,6 +3048,10 @@ function handleInput(e) {
 
     case GS.LEVEL_UP:
       handleLevelUpInput(e);
+      break;
+
+    case GS.COMBAT:
+      handleCombatInput(e);
       break;
 
     case GS.DEAD:
