@@ -1,0 +1,2154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEEP — A Descent into Darkness</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Cinzel:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+  :root {
+    --bg-void: #08080c;
+    --bg-dark: #0e0e18;
+    --bg-surface: #14142a;
+    --bg-elevated: #1a1a38;
+    --wall: #3a3a5c;
+    --wall-lit: #5a5a8c;
+    --floor: #2a2a44;
+    --floor-lit: #4a4a6e;
+    --player: #f0c040;
+    --player-glow: #f0c04066;
+    --monster-common: #cc4444;
+    --monster-rare: #cc44cc;
+    --monster-boss: #ff4444;
+    --item-common: #44aacc;
+    --item-magic: #aa44ff;
+    --item-gold: #ffcc00;
+    --stairs: #ffffff;
+    --hp-full: #44cc44;
+    --hp-warn: #cccc44;
+    --hp-danger: #cc4444;
+    --mana: #4488ff;
+    --xp: #cc88ff;
+    --text-bright: #e0e0f0;
+    --text-dim: #6a6a8e;
+    --text-faded: #3a3a5c;
+    --accent: #f08030;
+    --accent-glow: #f0803044;
+    --border: #2a2a4a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-void);
+    color: var(--text-bright);
+    font-family: 'Fira Code', monospace;
+    overflow: hidden;
+    user-select: none;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  /* Scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent 0px, rgba(0,0,0,0.03) 1px, transparent 2px);
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  /* Vignette */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%);
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* ── GAME LAYOUT ── */
+  .game-layout {
+    display: grid;
+    grid-template-columns: 210px 1fr 170px;
+    grid-template-rows: 34px 1fr 180px;
+    grid-template-areas:
+      "title  title   title"
+      "stats  map     sidebar"
+      "stats  log     sidebar";
+    width: 100vw;
+    height: 100vh;
+    gap: 1px;
+    background: var(--border);
+  }
+
+  .panel {
+    background: var(--bg-dark);
+    overflow: hidden;
+  }
+
+  /* Title bar */
+  #title-bar {
+    grid-area: title;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  #title-bar .floor-name { color: var(--accent); }
+  #title-bar .turn-count { font-family: 'Fira Code', monospace; font-size: 11px; }
+
+  /* Stats panel */
+  #stats-panel {
+    grid-area: stats;
+    padding: 12px;
+    font-size: 12px;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+  }
+  #stats-panel h2 {
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    color: var(--player);
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+  #stats-panel .class-race {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+    font-style: italic;
+    font-family: 'Crimson Text', serif;
+  }
+
+  .bar-container {
+    margin-bottom: 6px;
+  }
+  .bar-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 2px;
+  }
+  .bar-track {
+    height: 8px;
+    background: var(--bg-void);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s ease, background-color 0.3s ease;
+  }
+  .bar-fill.hp { background: var(--hp-full); }
+  .bar-fill.hp.warn { background: var(--hp-warn); }
+  .bar-fill.hp.danger { background: var(--hp-danger); }
+  .bar-fill.mana { background: var(--mana); }
+  .bar-fill.xp { background: var(--xp); }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px 8px;
+    margin: 10px 0;
+    font-size: 11px;
+  }
+  .stat-grid .stat-name { color: var(--text-dim); }
+  .stat-grid .stat-val { color: var(--text-bright); }
+  .stat-grid .stat-mod { font-size: 10px; }
+  .stat-grid .stat-mod.pos { color: var(--hp-full); }
+  .stat-grid .stat-mod.neg { color: var(--hp-danger); }
+
+  .equip-section { margin-top: 10px; font-size: 11px; }
+  .equip-section h3 {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+  .equip-slot {
+    color: var(--text-faded);
+    margin-bottom: 2px;
+  }
+  .equip-slot .item-name { color: var(--item-common); }
+  .equip-slot .item-magic { color: var(--item-magic); }
+
+  .conditions { margin-top: 8px; font-size: 10px; }
+  .cond-badge {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin: 1px;
+    font-size: 9px;
+  }
+  .cond-badge.buff { background: #1a3a1a; color: var(--hp-full); }
+  .cond-badge.debuff { background: #3a1a1a; color: var(--hp-danger); }
+
+  /* Dungeon map */
+  #map-panel {
+    grid-area: map;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-void);
+    overflow: hidden;
+  }
+  #dungeon-map {
+    font-family: 'Fira Code', monospace;
+    font-size: 15px;
+    line-height: 1.2;
+    white-space: pre;
+    letter-spacing: 0.5px;
+  }
+
+  /* Map tile classes */
+  .t-void { color: transparent; }
+  .t-wall { color: var(--wall-lit); }
+  .t-floor { color: var(--floor-lit); }
+  .t-door { color: #aa8844; }
+  .t-stairs { color: var(--stairs); font-weight: bold; }
+  .t-trap { color: #cc6644; }
+  .t-water { color: #4488aa; }
+  .t-player {
+    color: var(--player);
+    font-weight: bold;
+    animation: torchFlicker 1.5s ease-in-out infinite;
+  }
+
+  @keyframes torchFlicker {
+    0%   { text-shadow: 0 0 8px var(--player-glow), 0 0 20px var(--player-glow); }
+    25%  { text-shadow: 0 0 12px var(--player-glow), 0 0 30px var(--player-glow); }
+    50%  { text-shadow: 0 0 6px var(--player-glow), 0 0 16px var(--player-glow); }
+    75%  { text-shadow: 0 0 14px var(--player-glow), 0 0 28px var(--player-glow); }
+    100% { text-shadow: 0 0 8px var(--player-glow), 0 0 20px var(--player-glow); }
+  }
+
+  /* Sidebar */
+  #sidebar {
+    grid-area: sidebar;
+    padding: 10px;
+    font-size: 11px;
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  #mini-map-container {
+    border: 1px solid var(--border);
+    background: var(--bg-void);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+  }
+  #mini-map {
+    image-rendering: pixelated;
+  }
+  .action-hints h3 {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .hint-line {
+    color: var(--text-faded);
+    margin-bottom: 3px;
+    font-size: 10px;
+  }
+  .hint-line kbd {
+    color: var(--accent);
+    font-weight: bold;
+  }
+
+  /* Message log */
+  #log-panel {
+    grid-area: log;
+    padding: 8px 12px;
+    overflow-y: auto;
+    font-size: 12px;
+    line-height: 1.5;
+    border-top: 1px solid var(--border);
+  }
+  #log-panel::-webkit-scrollbar { width: 4px; }
+  #log-panel::-webkit-scrollbar-track { background: var(--bg-dark); }
+  #log-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .log-entry { margin-bottom: 2px; }
+  .log-entry.narrative { font-family: 'Crimson Text', serif; font-style: italic; color: var(--text-dim); font-size: 13px; }
+  .log-hit { color: var(--hp-full); }
+  .log-miss { color: var(--text-faded); }
+  .log-damage { color: var(--accent); }
+  .log-kill { color: var(--player); }
+  .log-player-hit { color: var(--hp-danger); }
+  .log-xp { color: var(--xp); }
+  .log-item { color: var(--item-common); }
+  .log-gold { color: var(--item-gold); }
+  .log-info { color: var(--text-dim); }
+
+  /* ── OVERLAYS ── */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 8, 12, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  .overlay.hidden { display: none; }
+
+  /* Title screen */
+  #title-screen {
+    text-align: center;
+  }
+  #title-screen .ascii-title {
+    font-family: 'Fira Code', monospace;
+    font-size: 14px;
+    color: var(--accent);
+    line-height: 1.15;
+    margin-bottom: 20px;
+    animation: titleGlow 3s ease-in-out infinite;
+  }
+  @keyframes titleGlow {
+    0%, 100% { text-shadow: 0 0 10px var(--accent-glow), 0 0 30px var(--accent-glow); filter: brightness(1); }
+    50% { text-shadow: 0 0 20px var(--accent-glow), 0 0 50px var(--accent-glow); filter: brightness(1.15); }
+  }
+  #title-screen .subtitle {
+    font-family: 'Crimson Text', serif;
+    font-style: italic;
+    font-size: 20px;
+    color: var(--text-dim);
+    margin-bottom: 30px;
+  }
+  #title-screen .prompt {
+    font-size: 13px;
+    color: var(--text-faded);
+    animation: blink 1.5s ease-in-out infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* Fade overlay for transitions */
+  #fade-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg-void);
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+    z-index: 500;
+  }
+  #fade-overlay.active { opacity: 1; }
+
+  /* Character creation */
+  #char-create-screen {
+    max-width: 600px;
+    width: 90%;
+    text-align: center;
+  }
+  #char-create-screen h1 {
+    font-family: 'Cinzel', serif;
+    font-size: 22px;
+    color: var(--accent);
+    margin-bottom: 6px;
+    letter-spacing: 3px;
+  }
+  #char-create-screen .step-label {
+    font-family: 'Crimson Text', serif;
+    font-style: italic;
+    color: var(--text-dim);
+    font-size: 15px;
+    margin-bottom: 20px;
+  }
+  .create-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 16px 0;
+  }
+  .create-option {
+    padding: 10px 16px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .create-option:hover, .create-option.selected {
+    border-color: var(--accent);
+    background: var(--bg-elevated);
+  }
+  .create-option .opt-name {
+    color: var(--player);
+    font-weight: bold;
+    font-size: 13px;
+  }
+  .create-option .opt-desc {
+    color: var(--text-dim);
+    font-size: 11px;
+    margin-top: 2px;
+  }
+  .create-option .opt-stats {
+    color: var(--text-faded);
+    font-size: 10px;
+    margin-top: 3px;
+  }
+  .name-input {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    color: var(--player);
+    font-family: 'Cinzel', serif;
+    font-size: 18px;
+    padding: 8px 16px;
+    text-align: center;
+    outline: none;
+    border-radius: 4px;
+    width: 280px;
+    letter-spacing: 2px;
+  }
+  .name-input:focus { border-color: var(--accent); }
+  .stat-roll-display {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin: 16px 0;
+  }
+  .stat-box {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px;
+    text-align: center;
+  }
+  .stat-box .stat-label { color: var(--text-dim); font-size: 10px; }
+  .stat-box .stat-value { color: var(--text-bright); font-size: 20px; font-weight: bold; }
+  .stat-box .stat-modifier { font-size: 11px; }
+  .reroll-info { color: var(--text-faded); font-size: 11px; margin-top: 8px; }
+  .create-nav { color: var(--text-faded); font-size: 11px; margin-top: 16px; }
+
+  /* Death screen */
+  #death-screen { text-align: center; }
+  #death-screen .tombstone {
+    font-family: 'Fira Code', monospace;
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.3;
+    margin-bottom: 20px;
+  }
+  #death-screen .death-prompt {
+    font-size: 12px;
+    color: var(--text-faded);
+    animation: blink 1.5s ease-in-out infinite;
+  }
+
+  /* Inventory overlay */
+  #inventory-screen {
+    max-width: 500px;
+    width: 90%;
+  }
+  #inventory-screen h2 {
+    font-family: 'Cinzel', serif;
+    color: var(--accent);
+    font-size: 16px;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+  }
+  .inv-list {
+    max-height: 60vh;
+    overflow-y: auto;
+    font-size: 12px;
+  }
+  .inv-item {
+    padding: 4px 8px;
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--bg-surface);
+  }
+  .inv-item:hover { background: var(--bg-surface); }
+  .inv-item .inv-key { color: var(--accent); margin-right: 8px; }
+  .inv-item .inv-name { color: var(--item-common); }
+  .inv-item .inv-name.equipped { color: var(--player); }
+  .inv-item .inv-type { color: var(--text-faded); font-size: 10px; }
+  .inv-footer { color: var(--text-faded); font-size: 11px; margin-top: 12px; }
+
+  /* Help overlay */
+  #help-screen {
+    max-width: 500px;
+    width: 90%;
+    font-size: 12px;
+  }
+  #help-screen h2 {
+    font-family: 'Cinzel', serif;
+    color: var(--accent);
+    font-size: 16px;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+  }
+  .help-section { margin-bottom: 12px; }
+  .help-section h3 { color: var(--text-dim); font-size: 11px; margin-bottom: 4px; }
+  .help-row { display: flex; margin-bottom: 2px; }
+  .help-row kbd { color: var(--accent); min-width: 80px; }
+  .help-row span { color: var(--text-bright); }
+
+  /* Level-up overlay */
+  #levelup-screen { text-align: center; }
+  #levelup-screen h2 {
+    font-family: 'Cinzel', serif;
+    color: var(--player);
+    font-size: 20px;
+    letter-spacing: 3px;
+    margin-bottom: 6px;
+  }
+  #levelup-screen .lu-info {
+    color: var(--text-dim);
+    font-size: 12px;
+    margin-bottom: 16px;
+    font-family: 'Crimson Text', serif;
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+
+<!-- Fade overlay for transitions -->
+<div id="fade-overlay"></div>
+
+<!-- Title Screen -->
+<div id="title-overlay" class="overlay">
+  <div id="title-screen">
+    <pre class="ascii-title">
+ ██████╗  ███████╗ ███████╗ ██████╗
+ ██╔══██╗ ██╔════╝ ██╔════╝ ██╔══██╗
+ ██║  ██║ █████╗   █████╗   ██████╔╝
+ ██║  ██║ ██╔══╝   ██╔══╝   ██╔═══╝
+ ██████╔╝ ███████╗ ███████╗ ██║
+ ╚═════╝  ╚══════╝ ╚══════╝ ╚═╝</pre>
+    <div class="subtitle">~ A Descent into Darkness ~</div>
+    <div class="prompt">Press ENTER to begin your journey</div>
+  </div>
+</div>
+
+<!-- Character Creation -->
+<div id="charcreate-overlay" class="overlay hidden">
+  <div id="char-create-screen">
+    <h1>FORGE YOUR FATE</h1>
+    <div class="step-label" id="create-step-label">Step 1: Name your hero</div>
+    <div id="create-content"></div>
+    <div class="create-nav" id="create-nav"></div>
+  </div>
+</div>
+
+<!-- Inventory -->
+<div id="inventory-overlay" class="overlay hidden">
+  <div id="inventory-screen">
+    <h2>INVENTORY</h2>
+    <div class="inv-list" id="inv-list"></div>
+    <div class="inv-footer" id="inv-footer"></div>
+  </div>
+</div>
+
+<!-- Help -->
+<div id="help-overlay" class="overlay hidden">
+  <div id="help-screen">
+    <h2>COMMANDS</h2>
+    <div id="help-content"></div>
+  </div>
+</div>
+
+<!-- Level Up -->
+<div id="levelup-overlay" class="overlay hidden">
+  <div id="levelup-screen">
+    <h2>LEVEL UP</h2>
+    <div class="lu-info" id="lu-info"></div>
+    <div id="lu-content"></div>
+  </div>
+</div>
+
+<!-- Death Screen -->
+<div id="death-overlay" class="overlay hidden">
+  <div id="death-screen">
+    <pre class="tombstone" id="tombstone-art"></pre>
+    <div class="death-prompt">Press ENTER to return to the abyss</div>
+  </div>
+</div>
+
+<!-- Main Game Layout -->
+<div class="game-layout" id="game-layout" style="display:none;">
+  <!-- Title Bar -->
+  <div id="title-bar" class="panel">
+    <span class="floor-name" id="floor-name">The Sunless Caverns — Floor 1</span>
+    <span id="char-brief"></span>
+    <span class="turn-count" id="turn-count">Turn 0</span>
+  </div>
+
+  <!-- Stats Panel -->
+  <div id="stats-panel" class="panel">
+    <div id="stats-content"></div>
+  </div>
+
+  <!-- Dungeon Map -->
+  <div id="map-panel" class="panel">
+    <div id="dungeon-map"></div>
+  </div>
+
+  <!-- Sidebar -->
+  <div id="sidebar" class="panel">
+    <div id="mini-map-container">
+      <canvas id="mini-map" width="80" height="40"></canvas>
+    </div>
+    <div class="action-hints" id="action-hints">
+      <h3>ACTIONS</h3>
+      <div id="hints-content"></div>
+    </div>
+  </div>
+
+  <!-- Message Log -->
+  <div id="log-panel" class="panel">
+    <div id="message-log"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+'use strict';
+
+// ════════════════════════════════════════════════════
+// SECTION 1: CONSTANTS & CONFIGURATION
+// ════════════════════════════════════════════════════
+
+const MAP_W = 80, MAP_H = 40;
+const VIEW_W = 60, VIEW_H = 24;
+const MAX_INVENTORY = 20;
+const MAX_FLOORS = 10;
+
+const TILE = { VOID: 0, WALL: 1, FLOOR: 2, DOOR: 3, STAIRS_DOWN: 4, STAIRS_UP: 5, TRAP: 6, WATER: 7 };
+
+const TILE_CH = {
+  [TILE.VOID]: ' ', [TILE.WALL]: '#', [TILE.FLOOR]: '\u00B7',
+  [TILE.DOOR]: '+', [TILE.STAIRS_DOWN]: '>', [TILE.STAIRS_UP]: '<',
+  [TILE.TRAP]: '^', [TILE.WATER]: '~'
+};
+
+const TILE_CLASS = {
+  [TILE.VOID]: 't-void', [TILE.WALL]: 't-wall', [TILE.FLOOR]: 't-floor',
+  [TILE.DOOR]: 't-door', [TILE.STAIRS_DOWN]: 't-stairs', [TILE.STAIRS_UP]: 't-stairs',
+  [TILE.TRAP]: 't-trap', [TILE.WATER]: 't-water'
+};
+
+const FLOOR_NAMES = [
+  '', 'The Sunless Caverns', 'The Fungal Depths', 'The Whispering Halls',
+  'The Bone Warrens', 'The Flooded Crypt', 'The Iron Mines',
+  'The Abyssal Rift', 'The Burning Chasm', 'The Obsidian Vault',
+  "The Dragon's Sanctum"
+];
+
+const FLOOR_DESCRIPTIONS = [
+  [],
+  ['The entrance to the dungeon yawns before you. Torchlight barely penetrates the gloom.',
+   'Cold stone steps lead down into darkness. Water drips somewhere ahead.'],
+  ['The walls here are slick with moisture. Something scurries in the shadows.',
+   'Fungal growths emit a faint bioluminescence along the corridor walls.'],
+  ['A low moan echoes through the stone corridors. The air tastes of copper.',
+   'Whispers seem to emanate from the very walls themselves.'],
+  ['Bones crunch underfoot. This place reeks of death.',
+   'Skeletal remains line the walls in grotesque arrangements.'],
+  ['Water pools on the floor, black and still. Something moves beneath.',
+   'The ceiling drips ceaselessly. Your torchlight reflects off dark water.'],
+  ['Rusted iron chains hang from the walls. The ring of distant hammers echoes.',
+   'Abandoned mine carts sit on corroded rails. The air is thick with dust.'],
+  ['The ground drops away into impossible darkness. A hot wind rises from below.',
+   'Cracks in the earth glow with a sullen red light.'],
+  ['Heat shimmers the air. The stone walls are warm to the touch.',
+   'Rivers of molten rock carve channels through the chamber floors.'],
+  ['Black glass walls reflect your torchlight in strange patterns.',
+   'The obsidian surfaces seem to absorb sound itself.'],
+  ['The stench of sulfur is overwhelming. Treasure gleams in impossible heaps.',
+   'Scorched stone and the rumble of something ancient stirring.']
+];
+
+// ════════════════════════════════════════════════════
+// SECTION 2: DATA TABLES
+// ════════════════════════════════════════════════════
+
+const RACES = {
+  human:    { name: 'Human',    mods: { str:1, dex:1, con:1, int:1, wis:1 }, passive: 'Versatile: +10% XP gain', desc: 'Adaptable and ambitious, humans excel in all pursuits.' },
+  dwarf:    { name: 'Dwarf',    mods: { str:2, dex:0, con:2, int:0, wis:1 }, passive: 'Darkvision: Extended sight radius', desc: 'Stout and resilient, born of stone and fire.' },
+  elf:      { name: 'Elf',      mods: { str:0, dex:2, con:-1, int:2, wis:1 }, passive: 'Magic Resist: +2 on spell saves', desc: 'Graceful and ancient, attuned to the arcane.' },
+  halfling: { name: 'Halfling', mods: { str:-1, dex:3, con:1, int:0, wis:1 }, passive: 'Lucky: Reroll natural 1 once per floor', desc: 'Small but remarkably fortunate.' }
+};
+
+const CLASSES = {
+  warrior: { name: 'Warrior', hitDie: 10, primary: 'str', desc: 'Masters of martial combat.', ability: 'Cleave: Killing blow grants free attack on adjacent foe', startWeapon: 'Longsword', startArmor: 'Chain Mail' },
+  rogue:   { name: 'Rogue',   hitDie: 6,  primary: 'dex', desc: 'Shadows and steel.',         ability: 'Backstab: +2d6 damage on unaware targets',       startWeapon: 'Dagger',    startArmor: 'Leather Armor' },
+  mage:    { name: 'Mage',    hitDie: 4,  primary: 'int', desc: 'Wielders of arcane might.',   ability: 'Spellcasting: Fireball, Frost Ray, Magic Missile', startWeapon: 'Staff',     startArmor: 'Robes' },
+  cleric:  { name: 'Cleric',  hitDie: 8,  primary: 'wis', desc: 'Divine servants of light.',   ability: 'Heal (3/floor) and Turn Undead',                  startWeapon: 'Mace',      startArmor: 'Scale Mail' }
+};
+
+const BESTIARY = {
+  rat:      { ch:'r', color:'#886644', name:'Giant Rat',     hp:4,  ac:10, atk:2,  dmg:[1,3,0],  xp:10,  behavior:'wander', tier:1 },
+  bat:      { ch:'b', color:'#666688', name:'Cave Bat',      hp:3,  ac:12, atk:1,  dmg:[1,2,0],  xp:8,   behavior:'wander', tier:1 },
+  goblin:   { ch:'g', color:'#44aa44', name:'Goblin',        hp:8,  ac:13, atk:4,  dmg:[1,6,0],  xp:25,  behavior:'aggressive', tier:1 },
+  kobold:   { ch:'k', color:'#aa6644', name:'Kobold',        hp:6,  ac:12, atk:3,  dmg:[1,4,0],  xp:15,  behavior:'aggressive', tier:1 },
+  orc:      { ch:'o', color:'#668844', name:'Orc',           hp:16, ac:14, atk:6,  dmg:[1,8,2],  xp:50,  behavior:'aggressive', tier:2 },
+  skeleton: { ch:'s', color:'#cccccc', name:'Skeleton',      hp:12, ac:13, atk:5,  dmg:[1,6,1],  xp:40,  behavior:'aggressive', tier:2, undead:true },
+  spider:   { ch:'S', color:'#444444', name:'Giant Spider',  hp:14, ac:12, atk:5,  dmg:[1,6,0],  xp:45,  behavior:'wander', tier:2, special:'poison' },
+  ogre:     { ch:'O', color:'#888844', name:'Ogre',          hp:26, ac:11, atk:7,  dmg:[2,6,2],  xp:80,  behavior:'aggressive', tier:2 },
+  troll:    { ch:'T', color:'#228822', name:'Troll',         hp:30, ac:15, atk:8,  dmg:[2,6,3],  xp:120, behavior:'aggressive', tier:3, special:'regen' },
+  wraith:   { ch:'W', color:'#8844cc', name:'Wraith',        hp:22, ac:16, atk:7,  dmg:[1,8,2],  xp:100, behavior:'aggressive', tier:3, special:'drain', undead:true },
+  vampire:  { ch:'V', color:'#cc2222', name:'Vampire',       hp:35, ac:17, atk:9,  dmg:[2,6,3],  xp:150, behavior:'aggressive', tier:3, special:'drain', undead:true },
+  golem:    { ch:'G', color:'#888888', name:'Iron Golem',    hp:50, ac:18, atk:10, dmg:[2,8,4],  xp:200, behavior:'stationary', tier:3 },
+  dragon:   { ch:'D', color:'#ff4444', name:'Ancient Dragon', hp:80, ac:20, atk:12, dmg:[3,8,6], xp:500, behavior:'stationary', tier:4, special:'breath' }
+};
+
+const WEAPONS = [
+  { name:'Dagger',     dmg:[1,4,0],  stat:'dex', weight:1,  value:5,   ch:'/' },
+  { name:'Mace',       dmg:[1,6,0],  stat:'str', weight:3,  value:15,  ch:'/' },
+  { name:'Longsword',  dmg:[1,8,0],  stat:'str', weight:3,  value:30,  ch:'/' },
+  { name:'Staff',      dmg:[1,6,0],  stat:'int', weight:2,  value:15,  ch:'/' },
+  { name:'Greataxe',   dmg:[1,12,0], stat:'str', weight:5,  value:50,  ch:'/' },
+  { name:'Warhammer',  dmg:[1,10,0], stat:'str', weight:4,  value:40,  ch:'/' }
+];
+
+const ARMORS = [
+  { name:'Robes',         acBonus:0, dexCap:99, weight:1,  value:5,   ch:'[' },
+  { name:'Leather Armor', acBonus:1, dexCap:99, weight:3,  value:20,  ch:'[' },
+  { name:'Scale Mail',    acBonus:3, dexCap:2,  weight:6,  value:50,  ch:'[' },
+  { name:'Chain Mail',    acBonus:4, dexCap:2,  weight:8,  value:75,  ch:'[' },
+  { name:'Plate Armor',   acBonus:6, dexCap:0,  weight:12, value:200, ch:'[' }
+];
+
+const POTIONS = [
+  { name:'Healing Potion',      effect:'heal',     amount:[2,4,2], ch:'!', color:'#cc4444', value:10 },
+  { name:'Greater Healing',     effect:'heal',     amount:[4,4,4], ch:'!', color:'#ff4444', value:30 },
+  { name:'Potion of Strength',  effect:'buff_str', duration:20,    ch:'!', color:'#cc8844', value:20 },
+  { name:'Potion of Speed',     effect:'buff_dex', duration:20,    ch:'!', color:'#44cc44', value:20 }
+];
+
+const SCROLLS = [
+  { name:'Scroll of Fireball',  effect:'fireball',   damage:[3,6,0], ch:'?', color:'#ff8844', value:25 },
+  { name:'Scroll of Teleport',  effect:'teleport',   ch:'?', color:'#8844ff', value:15 },
+  { name:'Scroll of Mapping',   effect:'reveal_map', ch:'?', color:'#4488ff', value:12 }
+];
+
+// ════════════════════════════════════════════════════
+// SECTION 3: UTILITY FUNCTIONS
+// ════════════════════════════════════════════════════
+
+function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function rollDie(sides) { return rand(1, sides); }
+function rollDice(n, sides, bonus) { let t = bonus || 0; for (let i = 0; i < n; i++) t += rollDie(sides); return t; }
+function rollDmg(dmg) { return rollDice(dmg[0], dmg[1], dmg[2]); }
+function statMod(val) { return Math.floor((val - 10) / 2); }
+function modStr(v) { return v >= 0 ? '+' + v : '' + v; }
+function dist(x1, y1, x2, y2) { return Math.sqrt((x2-x1)**2 + (y2-y1)**2); }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function pick(arr) { return arr[rand(0, arr.length - 1)]; }
+function shuffle(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = rand(0, i); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
+
+function roll4d6drop() {
+  const rolls = [rollDie(6), rollDie(6), rollDie(6), rollDie(6)];
+  rolls.sort((a,b) => a - b);
+  return rolls[1] + rolls[2] + rolls[3];
+}
+
+// ════════════════════════════════════════════════════
+// SECTION 4: AUDIO ENGINE
+// ════════════════════════════════════════════════════
+
+let audioCtx = null;
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function playNote(freq, type, duration, vol, delay) {
+  if (!audioCtx) return;
+  vol = vol || 0.06;
+  delay = delay || 0;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, audioCtx.currentTime + delay);
+  gain.gain.linearRampToValueAtTime(vol, audioCtx.currentTime + delay + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + duration);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start(audioCtx.currentTime + delay);
+  osc.stop(audioCtx.currentTime + delay + duration + 0.05);
+}
+
+function sfxHit()      { playNote(220,'sawtooth',0.08,0.05); playNote(330,'square',0.05,0.04,0.03); }
+function sfxMiss()     { playNote(150,'triangle',0.12,0.03); }
+function sfxPlayerHit(){ playNote(110,'sawtooth',0.15,0.07); playNote(90,'sawtooth',0.2,0.05,0.1); }
+function sfxKill()     { playNote(440,'square',0.05,0.04); playNote(550,'square',0.05,0.04,0.05); playNote(660,'square',0.08,0.04,0.1); }
+function sfxPickup()   { playNote(523,'sine',0.06,0.04); playNote(659,'sine',0.06,0.04,0.06); }
+function sfxGold()     { playNote(880,'sine',0.04,0.04); playNote(1108,'sine',0.04,0.04,0.04); playNote(1320,'sine',0.06,0.04,0.08); }
+function sfxStairs()   { for(let i=0;i<6;i++) playNote(200+i*80,'sine',0.1,0.03,i*0.06); }
+function sfxLevelUp()  { [523,659,784,1047].forEach((f,i) => playNote(f,'sine',0.15,0.06,i*0.12)); }
+function sfxDeath()    { [220,196,165,147,110].forEach((f,i) => playNote(f,'sawtooth',0.3,0.07,i*0.2)); }
+function sfxStep()     { playNote(100+Math.random()*40,'triangle',0.03,0.015); }
+
+// ════════════════════════════════════════════════════
+// SECTION 5: GAME STATE
+// ════════════════════════════════════════════════════
+
+const GS = {
+  TITLE:'title', CHAR_CREATE:'charCreate', PLAYING:'playing',
+  INVENTORY:'inventory', CHARACTER:'character', LEVEL_UP:'levelUp',
+  TARGETING:'targeting', DEAD:'dead', HELP:'help'
+};
+
+let gameState = GS.TITLE;
+let currentMap = null;
+let currentRooms = [];
+let monsters = [];
+let items = [];
+let floors = {};
+
+let player = null;
+let messageLog = [];
+
+// Character creation state
+let createStep = 0; // 0=name, 1=race, 2=class, 3=stats
+let createData = { name:'', race:null, cls:null, stats:null, rerolls:3 };
+
+// ════════════════════════════════════════════════════
+// SECTION 6: DUNGEON GENERATION
+// ════════════════════════════════════════════════════
+
+function createTile(type) { return { type: type, explored: false, visible: false }; }
+
+function generateFloor(floorLevel) {
+  const map = [];
+  for (let y = 0; y < MAP_H; y++) {
+    map[y] = [];
+    for (let x = 0; x < MAP_W; x++) {
+      map[y][x] = createTile(TILE.WALL);
+    }
+  }
+  const rooms = [];
+
+  function carveRoom(rx, ry, rw, rh) {
+    for (let y = ry; y < ry + rh; y++)
+      for (let x = rx; x < rx + rw; x++)
+        map[y][x].type = TILE.FLOOR;
+    rooms.push({ x:rx, y:ry, w:rw, h:rh, cx: rx + Math.floor(rw/2), cy: ry + Math.floor(rh/2) });
+  }
+
+  function carveCorridor(x1, y1, x2, y2) {
+    let x = x1, y = y1;
+    if (Math.random() < 0.5) {
+      while (x !== x2) { if (map[y][x].type === TILE.WALL) map[y][x].type = TILE.FLOOR; x += x < x2 ? 1 : -1; }
+      while (y !== y2) { if (map[y][x].type === TILE.WALL) map[y][x].type = TILE.FLOOR; y += y < y2 ? 1 : -1; }
+    } else {
+      while (y !== y2) { if (map[y][x].type === TILE.WALL) map[y][x].type = TILE.FLOOR; y += y < y2 ? 1 : -1; }
+      while (x !== x2) { if (map[y][x].type === TILE.WALL) map[y][x].type = TILE.FLOOR; x += x < x2 ? 1 : -1; }
+    }
+    if (map[y2][x2].type === TILE.WALL) map[y2][x2].type = TILE.FLOOR;
+  }
+
+  function splitBSP(sx, sy, sw, sh, depth) {
+    if (sw < 12 || sh < 10 || depth > 5) {
+      const rw = rand(4, Math.min(sw - 2, 12));
+      const rh = rand(3, Math.min(sh - 2, 8));
+      const rx = sx + rand(1, sw - rw - 1);
+      const ry = sy + rand(1, sh - rh - 1);
+      carveRoom(rx, ry, rw, rh);
+      return rooms[rooms.length - 1];
+    }
+
+    let r1, r2;
+    if (sw > sh || (sw === sh && Math.random() < 0.5)) {
+      const split = sx + rand(Math.floor(sw * 0.3), Math.floor(sw * 0.7));
+      r1 = splitBSP(sx, sy, split - sx, sh, depth + 1);
+      r2 = splitBSP(split, sy, sx + sw - split, sh, depth + 1);
+    } else {
+      const split = sy + rand(Math.floor(sh * 0.3), Math.floor(sh * 0.7));
+      r1 = splitBSP(sx, sy, sw, split - sy, depth + 1);
+      r2 = splitBSP(sx, split, sw, sy + sh - split, depth + 1);
+    }
+
+    if (r1 && r2) carveCorridor(r1.cx, r1.cy, r2.cx, r2.cy);
+    return Math.random() < 0.5 ? r1 : r2;
+  }
+
+  splitBSP(1, 1, MAP_W - 2, MAP_H - 2, 0);
+
+  // Place doors where corridors meet rooms (sparse)
+  for (let y = 2; y < MAP_H - 2; y++) {
+    for (let x = 2; x < MAP_W - 2; x++) {
+      if (map[y][x].type !== TILE.FLOOR) continue;
+      const h = map[y][x-1].type === TILE.WALL && map[y][x+1].type === TILE.WALL &&
+                map[y-1][x].type === TILE.FLOOR && map[y+1][x].type === TILE.FLOOR;
+      const v = map[y-1][x].type === TILE.WALL && map[y+1][x].type === TILE.WALL &&
+                map[y][x-1].type === TILE.FLOOR && map[y][x+1].type === TILE.FLOOR;
+      if ((h || v) && Math.random() < 0.15) map[y][x].type = TILE.DOOR;
+    }
+  }
+
+  // Place stairs
+  if (rooms.length > 1) {
+    const spawnRoom = rooms[0];
+    // Find room furthest from spawn
+    let farthest = rooms[1], maxD = 0;
+    for (let i = 1; i < rooms.length; i++) {
+      const d = dist(spawnRoom.cx, spawnRoom.cy, rooms[i].cx, rooms[i].cy);
+      if (d > maxD) { maxD = d; farthest = rooms[i]; }
+    }
+    if (floorLevel < MAX_FLOORS) {
+      map[farthest.cy][farthest.cx].type = TILE.STAIRS_DOWN;
+    }
+    if (floorLevel > 1) {
+      map[spawnRoom.cy][spawnRoom.cx].type = TILE.STAIRS_UP;
+    }
+  }
+
+  // Place traps (floor 3+)
+  if (floorLevel >= 3) {
+    const numTraps = rand(1, Math.min(floorLevel - 1, 4));
+    for (let t = 0; t < numTraps; t++) {
+      const room = pick(rooms);
+      const tx = rand(room.x + 1, room.x + room.w - 2);
+      const ty = rand(room.y + 1, room.y + room.h - 2);
+      if (map[ty][tx].type === TILE.FLOOR) {
+        map[ty][tx].type = TILE.TRAP;
+        map[ty][tx].revealed = false;
+      }
+    }
+  }
+
+  return { map, rooms };
+}
+
+// ════════════════════════════════════════════════════
+// SECTION 7: FOV / SHADOWCASTING
+// ════════════════════════════════════════════════════
+
+function computeFOV(map, px, py, radius) {
+  for (let y = 0; y < MAP_H; y++)
+    for (let x = 0; x < MAP_W; x++)
+      map[y][x].visible = false;
+
+  map[py][px].visible = true;
+  map[py][px].explored = true;
+
+  const mult = [
+    [1,0,0,-1,-1,0,0,1],
+    [0,1,-1,0,0,-1,1,0],
+    [0,1,1,0,0,-1,-1,0],
+    [1,0,0,1,-1,0,0,-1]
+  ];
+
+  function castLight(row, startSlope, endSlope, octant) {
+    if (startSlope < endSlope) return;
+    let nextStart = startSlope;
+    for (let i = row; i <= radius; i++) {
+      let blocked = false;
+      for (let dx = -i, dy = -i; dx <= 0; dx++) {
+        const mapX = px + dx * mult[0][octant] + dy * mult[1][octant];
+        const mapY = py + dx * mult[2][octant] + dy * mult[3][octant];
+        if (mapX < 0 || mapX >= MAP_W || mapY < 0 || mapY >= MAP_H) continue;
+
+        const lSlope = (dx - 0.5) / (dy + 0.5);
+        const rSlope = (dx + 0.5) / (dy - 0.5);
+
+        if (startSlope < rSlope) continue;
+        if (endSlope > lSlope) break;
+
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d <= radius) {
+          map[mapY][mapX].visible = true;
+          map[mapY][mapX].explored = true;
+        }
+
+        if (blocked) {
+          if (map[mapY][mapX].type === TILE.WALL) {
+            nextStart = rSlope;
+            continue;
+          } else {
+            blocked = false;
+            startSlope = nextStart;
+          }
+        } else if (map[mapY][mapX].type === TILE.WALL && i < radius) {
+          blocked = true;
+          castLight(i + 1, startSlope, lSlope, octant);
+          nextStart = rSlope;
+        }
+      }
+      if (blocked) break;
+    }
+  }
+
+  for (let oct = 0; oct < 8; oct++) {
+    castLight(1, 1.0, 0.0, oct);
+  }
+}
+
+// ════════════════════════════════════════════════════
+// SECTION 8: MONSTER MANAGEMENT
+// ════════════════════════════════════════════════════
+
+function spawnMonsters(rooms, floorLevel) {
+  const spawned = [];
+  const tierForFloor = floorLevel <= 3 ? 1 : floorLevel <= 6 ? 2 : floorLevel <= 9 ? 3 : 4;
+  const available = Object.entries(BESTIARY).filter(([,m]) => m.tier <= tierForFloor);
+
+  for (let i = 1; i < rooms.length; i++) {
+    if (Math.random() > 0.3 + floorLevel * 0.05) continue;
+    const room = rooms[i];
+    const count = rand(1, Math.min(1 + Math.floor(floorLevel / 3), 3));
+    for (let c = 0; c < count; c++) {
+      const mx = rand(room.x + 1, room.x + room.w - 2);
+      const my = rand(room.y + 1, room.y + room.h - 2);
+      if (spawned.some(m => m.x === mx && m.y === my)) continue;
+      const [key, template] = pick(available);
+      spawned.push({
+        ...template, id: key + '_' + spawned.length,
+        x: mx, y: my, curHp: template.hp, maxHp: template.hp,
+        aware: false, lastSawPlayer: null
+      });
+    }
+  }
+  return spawned;
+}
+
+function getMonsterAt(x, y) { return monsters.find(m => m.x === x && m.y === y && m.curHp > 0); }
+
+// ════════════════════════════════════════════════════
+// SECTION 9: ITEM MANAGEMENT
+// ════════════════════════════════════════════════════
+
+function spawnItems(rooms, floorLevel) {
+  const spawned = [];
+
+  for (let i = 0; i < rooms.length; i++) {
+    if (Math.random() > 0.4) continue;
+    const room = rooms[i];
+    const count = rand(1, 2);
+    for (let c = 0; c < count; c++) {
+      const ix = rand(room.x + 1, room.x + room.w - 2);
+      const iy = rand(room.y + 1, room.y + room.h - 2);
+      if (spawned.some(it => it.x === ix && it.y === iy)) continue;
+
+      const roll = Math.random();
+      let item;
+      if (roll < 0.3) {
+        // Gold
+        item = { type:'gold', name:'Gold', ch:'$', color:'#ffcc00', amount: rollDice(floorLevel, 6, floorLevel * 2), x:ix, y:iy };
+      } else if (roll < 0.55) {
+        // Potion
+        const p = pick(POTIONS);
+        item = { ...p, type:'potion', x:ix, y:iy };
+      } else if (roll < 0.7) {
+        // Scroll
+        const s = pick(SCROLLS);
+        item = { ...s, type:'scroll', x:ix, y:iy };
+      } else if (roll < 0.85) {
+        // Weapon
+        const w = pick(WEAPONS.filter(w => w.value <= floorLevel * 15 + 20));
+        const enchant = floorLevel >= 5 && Math.random() < 0.2 ? rand(1, Math.min(3, Math.floor(floorLevel/3))) : 0;
+        item = { ...w, type:'weapon', enchant, x:ix, y:iy, color: enchant ? '#aa44ff' : '#44aacc' };
+        if (enchant) item.name = item.name + ' +' + enchant;
+      } else {
+        // Armor
+        const a = pick(ARMORS.filter(a => a.value <= floorLevel * 30 + 30));
+        const enchant = floorLevel >= 5 && Math.random() < 0.2 ? rand(1, Math.min(3, Math.floor(floorLevel/3))) : 0;
+        item = { ...a, type:'armor', enchant, x:ix, y:iy, color: enchant ? '#aa44ff' : '#44aacc' };
+        if (enchant) item.name = item.name + ' +' + enchant;
+      }
+      spawned.push(item);
+    }
+  }
+  return spawned;
+}
+
+function getItemAt(x, y) { return items.find(it => it.x === x && it.y === y); }
+
+// ════════════════════════════════════════════════════
+// SECTION 10: PLAYER & COMBAT
+// ════════════════════════════════════════════════════
+
+function createPlayer(name, raceKey, clsKey, stats) {
+  const race = RACES[raceKey];
+  const cls = CLASSES[clsKey];
+  const finalStats = {};
+  for (const s of ['str','dex','con','int','wis']) {
+    finalStats[s] = stats[s] + (race.mods[s] || 0);
+  }
+  const maxHp = cls.hitDie + statMod(finalStats.con);
+  const maxMana = (clsKey === 'mage' || clsKey === 'cleric') ? 4 + statMod(finalStats.int) + statMod(finalStats.wis) : 0;
+
+  // Starting equipment
+  const weapon = WEAPONS.find(w => w.name === cls.startWeapon);
+  const armor = ARMORS.find(a => a.name === cls.startArmor);
+
+  return {
+    name, race: raceKey, cls: clsKey, level: 1, xp: 0,
+    xpToLevel: 150,
+    stats: finalStats,
+    hp: maxHp, maxHp,
+    mana: maxMana, maxMana,
+    ac: 10 + (armor ? armor.acBonus : 0) + Math.min(statMod(finalStats.dex), armor ? armor.dexCap : 99),
+    inventory: [],
+    equipment: {
+      weapon: weapon ? { ...weapon, type:'weapon', enchant:0 } : null,
+      armor: armor ? { ...armor, type:'armor', enchant:0 } : null,
+      shield: null, ring: null, amulet: null
+    },
+    x: 0, y: 0,
+    floorLevel: 1,
+    visionRadius: raceKey === 'dwarf' ? 10 : 8,
+    conditions: [],
+    turnsPlayed: 0, monstersKilled: 0, goldCollected: 0, deepestFloor: 1,
+    luckyUsed: false, // Halfling
+    healsRemaining: clsKey === 'cleric' ? 3 : 0,
+    spells: clsKey === 'mage' ? ['Magic Missile', 'Frost Ray', 'Fireball'] : [],
+    cleaveTarget: null
+  };
+}
+
+function getPlayerAttackMod() {
+  const w = player.equipment.weapon;
+  const primaryStat = w && w.stat ? w.stat : 'str';
+  const prof = Math.min(6, Math.floor(player.level / 4) + 2);
+  return statMod(player.stats[primaryStat]) + prof + (w && w.enchant ? w.enchant : 0);
+}
+
+function getPlayerDamage() {
+  const w = player.equipment.weapon;
+  const dmg = w ? w.dmg : [1, 4, 0];
+  const primaryStat = w && w.stat ? w.stat : 'str';
+  return rollDmg(dmg) + statMod(player.stats[primaryStat]) + (w && w.enchant ? w.enchant : 0);
+}
+
+function recalcAC() {
+  const a = player.equipment.armor;
+  const s = player.equipment.shield;
+  const dexMod = statMod(player.stats.dex);
+  const dexCap = a ? a.dexCap : 99;
+  player.ac = 10 + (a ? a.acBonus + (a.enchant || 0) : 0) + Math.min(dexMod, dexCap) + (s ? 2 : 0);
+}
+
+function attackMonster(monster) {
+  const roll = rollDie(20);
+  const mod = getPlayerAttackMod();
+  const total = roll + mod;
+  const hit = roll === 20 || (roll !== 1 && total >= monster.ac);
+  const crit = roll === 20;
+
+  if (roll === 1) {
+    addLog(`You swing wildly at the ${monster.name}... <span class="log-miss">(nat 1) MISS!</span>`);
+    sfxMiss();
+    return false;
+  }
+
+  if (hit) {
+    let dmg = getPlayerDamage();
+    if (crit) dmg += getPlayerDamage(); // double on crit
+    dmg = Math.max(1, dmg);
+    monster.curHp -= dmg;
+    const rollStr = `<span class="log-info">(${roll}${crit ? '!!' : ''} + ${mod} = ${total} vs AC ${monster.ac})</span>`;
+    if (monster.curHp <= 0) {
+      addLog(`You strike the ${monster.name}! ${rollStr} <span class="log-damage">${dmg} dmg</span> — <span class="log-kill">SLAIN!</span>`);
+      const xpGain = Math.floor(monster.xp * (player.race === 'human' ? 1.1 : 1));
+      player.xp += xpGain;
+      player.monstersKilled++;
+      addLog(`<span class="log-xp">+${xpGain} XP</span>`);
+      sfxKill();
+      return 'killed';
+    } else {
+      addLog(`You hit the ${monster.name}! ${rollStr} <span class="log-damage">${dmg} dmg</span> (${monster.curHp}/${monster.maxHp})`);
+      sfxHit();
+    }
+  } else {
+    addLog(`You miss the ${monster.name}. <span class="log-info">(${roll} + ${mod} = ${total} vs AC ${monster.ac})</span> <span class="log-miss">MISS</span>`);
+    sfxMiss();
+  }
+  return hit ? true : false;
+}
+
+function monsterAttackPlayer(monster) {
+  const roll = rollDie(20);
+  const total = roll + monster.atk;
+  const hit = roll === 20 || (roll !== 1 && total >= player.ac);
+
+  if (hit) {
+    let dmg = rollDmg(monster.dmg);
+    if (roll === 20) dmg += rollDmg(monster.dmg);
+    dmg = Math.max(1, dmg);
+    player.hp -= dmg;
+    addLog(`The ${monster.name} hits you! <span class="log-player-hit">${dmg} dmg</span> (HP: ${Math.max(0,player.hp)}/${player.maxHp})`);
+    sfxPlayerHit();
+
+    // Special effects
+    if (monster.special === 'poison' && Math.random() < 0.3) {
+      const save = rollDie(20) + statMod(player.stats.con);
+      if (save < 12 + player.floorLevel) {
+        player.conditions.push({ type:'poisoned', duration: 5, dmg: 1 });
+        addLog(`<span class="log-player-hit">You are poisoned!</span>`);
+      }
+    }
+    if (monster.special === 'drain') {
+      const drainHp = rand(1, 3);
+      monster.curHp = Math.min(monster.maxHp, monster.curHp + drainHp);
+      addLog(`<span class="log-player-hit">The ${monster.name} drains your life force!</span>`);
+    }
+  } else {
+    addLog(`The ${monster.name} misses you. <span class="log-miss">(${roll} + ${monster.atk} = ${total} vs AC ${player.ac})</span>`);
+  }
+}
+
+// ════════════════════════════════════════════════════
+// SECTION 11: MONSTER AI
+// ════════════════════════════════════════════════════
+
+function processMonsterTurns() {
+  for (const m of monsters) {
+    if (m.curHp <= 0) continue;
+
+    // Regen
+    if (m.special === 'regen' && m.curHp < m.maxHp) {
+      m.curHp = Math.min(m.maxHp, m.curHp + 2);
+    }
+
+    const d = dist(m.x, m.y, player.x, player.y);
+    const canSee = currentMap[m.y][m.x].visible; // if player can see it, it can "see" player
+
+    if (canSee) { m.aware = true; m.lastSawPlayer = { x: player.x, y: player.y }; }
+
+    // Adjacent? Attack!
+    if (Math.abs(m.x - player.x) <= 1 && Math.abs(m.y - player.y) <= 1 && !(m.x === player.x && m.y === player.y)) {
+      // Dragon breath weapon
+      if (m.special === 'breath' && Math.random() < 0.3) {
+        const save = rollDie(20) + statMod(player.stats.dex);
+        const dmg = rollDice(4, 6, 0);
+        if (save < 15) {
+          player.hp -= dmg;
+          addLog(`<span class="log-player-hit">The ${m.name} breathes fire! ${dmg} damage!</span>`);
+        } else {
+          player.hp -= Math.floor(dmg / 2);
+          addLog(`<span class="log-player-hit">The ${m.name} breathes fire! You dodge partially — ${Math.floor(dmg/2)} damage!</span>`);
+        }
+        sfxPlayerHit();
+      } else {
+        monsterAttackPlayer(m);
+      }
+      continue;
+    }
+
+    // Movement AI
+    if (m.behavior === 'stationary' && !m.aware) continue;
+
+    let target = null;
+    if (m.aware && m.behavior !== 'flee') {
+      target = { x: player.x, y: player.y };
+    } else if (m.behavior === 'flee' && m.curHp < m.maxHp * 0.25 && canSee) {
+      // Run away
+      const dx = m.x - player.x;
+      const dy = m.y - player.y;
+      target = { x: m.x + Math.sign(dx), y: m.y + Math.sign(dy) };
+    } else if (m.behavior === 'wander') {
+      const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
+      const d = pick(dirs);
+      target = { x: m.x + d[0], y: m.y + d[1] };
+    }
+
+    if (target) {
+      const dx = Math.sign(target.x - m.x);
+      const dy = Math.sign(target.y - m.y);
+      const nx = m.x + dx;
+      const ny = m.y + dy;
+
+      if (nx >= 0 && nx < MAP_W && ny >= 0 && ny < MAP_H &&
+          currentMap[ny][nx].type !== TILE.WALL &&
+          !getMonsterAt(nx, ny) &&
+          !(nx === player.x && ny === player.y)) {
+        m.x = nx;
+        m.y = ny;
+      }
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════
+// SECTION 12: RENDERING
+// ════════════════════════════════════════════════════
+
+function renderMap() {
+  const mapEl = document.getElementById('dungeon-map');
+  const offsetX = clamp(player.x - Math.floor(VIEW_W/2), 0, MAP_W - VIEW_W);
+  const offsetY = clamp(player.y - Math.floor(VIEW_H/2), 0, MAP_H - VIEW_H);
+
+  let html = '';
+  for (let vy = 0; vy < VIEW_H; vy++) {
+    for (let vx = 0; vx < VIEW_W; vx++) {
+      const mx = offsetX + vx;
+      const my = offsetY + vy;
+      if (mx >= MAP_W || my >= MAP_H) { html += ' '; continue; }
+      const tile = currentMap[my][mx];
+
+      if (!tile.explored) { html += '<span class="t-void"> </span>'; continue; }
+
+      const monster = getMonsterAt(mx, my);
+      const item = getItemAt(mx, my);
+      const isPlayer = mx === player.x && my === player.y;
+
+      if (tile.visible) {
+        const d = dist(mx, my, player.x, player.y);
+        const bright = Math.max(0.35, 1.0 - (d / player.visionRadius) * 0.65);
+
+        if (isPlayer) {
+          html += '<span class="t-player">@</span>';
+        } else if (monster) {
+          html += `<span style="color:${monster.color};opacity:${bright}">${monster.ch}</span>`;
+        } else if (item) {
+          html += `<span style="color:${item.color || '#44aacc'};opacity:${bright}">${item.ch}</span>`;
+        } else {
+          const ch = tile.type === TILE.TRAP && !tile.revealed ? '\u00B7' : TILE_CH[tile.type];
+          const cls = tile.type === TILE.TRAP && !tile.revealed ? 't-floor' : TILE_CLASS[tile.type];
+          html += `<span class="${cls}" style="opacity:${bright}">${ch}</span>`;
+        }
+      } else {
+        // Explored but not visible — dim memory
+        const ch = tile.type === TILE.TRAP && !tile.revealed ? '\u00B7' : TILE_CH[tile.type];
+        const cls = tile.type === TILE.TRAP && !tile.revealed ? 't-floor' : TILE_CLASS[tile.type];
+        html += `<span class="${cls}" style="opacity:0.2">${ch}</span>`;
+      }
+    }
+    html += '\n';
+  }
+  mapEl.innerHTML = html;
+}
+
+function renderStats() {
+  if (!player) return;
+  const p = player;
+  const hpPct = Math.max(0, p.hp / p.maxHp * 100);
+  const hpClass = hpPct > 50 ? 'hp' : hpPct > 25 ? 'hp warn' : 'hp danger';
+
+  let html = `<h2>${p.name}</h2>`;
+  html += `<div class="class-race">Level ${p.level} ${RACES[p.race].name} ${CLASSES[p.cls].name}</div>`;
+
+  // HP Bar
+  html += `<div class="bar-container">
+    <div class="bar-label"><span>HP</span><span>${Math.max(0,p.hp)} / ${p.maxHp}</span></div>
+    <div class="bar-track"><div class="bar-fill ${hpClass}" style="width:${hpPct}%"></div></div></div>`;
+
+  // Mana bar (if applicable)
+  if (p.maxMana > 0) {
+    const manaPct = Math.max(0, p.mana / p.maxMana * 100);
+    html += `<div class="bar-container">
+      <div class="bar-label"><span>Mana</span><span>${p.mana} / ${p.maxMana}</span></div>
+      <div class="bar-track"><div class="bar-fill mana" style="width:${manaPct}%"></div></div></div>`;
+  }
+
+  // XP bar
+  const xpPct = Math.min(100, p.xp / p.xpToLevel * 100);
+  html += `<div class="bar-container">
+    <div class="bar-label"><span>XP</span><span>${p.xp} / ${p.xpToLevel}</span></div>
+    <div class="bar-track"><div class="bar-fill xp" style="width:${xpPct}%"></div></div></div>`;
+
+  // Stats
+  html += '<div class="stat-grid">';
+  for (const s of ['str','dex','con','int','wis']) {
+    const m = statMod(p.stats[s]);
+    const modCls = m >= 0 ? 'pos' : 'neg';
+    html += `<span class="stat-name">${s.toUpperCase()}</span><span class="stat-val">${p.stats[s]} <span class="stat-mod ${modCls}">(${modStr(m)})</span></span>`;
+  }
+  html += '</div>';
+
+  // AC
+  html += `<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">AC: <span style="color:var(--text-bright)">${p.ac}</span> &nbsp; Gold: <span style="color:var(--item-gold)">${p.goldCollected}</span></div>`;
+
+  // Equipment
+  html += '<div class="equip-section"><h3>EQUIPMENT</h3>';
+  const slots = ['weapon','armor','shield','ring','amulet'];
+  for (const slot of slots) {
+    const item = p.equipment[slot];
+    if (item) {
+      const cls = item.enchant ? 'item-magic' : 'item-name';
+      html += `<div class="equip-slot"><span style="color:var(--text-faded)">${slot}:</span> <span class="${cls}">${item.name}</span></div>`;
+    } else {
+      html += `<div class="equip-slot"><span style="color:var(--text-faded)">${slot}: —</span></div>`;
+    }
+  }
+  html += '</div>';
+
+  // Conditions
+  if (p.conditions.length > 0) {
+    html += '<div class="conditions">';
+    for (const c of p.conditions) {
+      const cls = c.type === 'poisoned' ? 'debuff' : 'buff';
+      html += `<span class="cond-badge ${cls}">${c.type} (${c.duration})</span> `;
+    }
+    html += '</div>';
+  }
+
+  document.getElementById('stats-content').innerHTML = html;
+}
+
+function renderMiniMap() {
+  const canvas = document.getElementById('mini-map');
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#08080c';
+  ctx.fillRect(0, 0, 80, 40);
+
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      const tile = currentMap[y][x];
+      if (!tile.explored) continue;
+      if (tile.type === TILE.WALL) {
+        ctx.fillStyle = tile.visible ? '#2a2a44' : '#161628';
+      } else if (tile.type === TILE.STAIRS_DOWN || tile.type === TILE.STAIRS_UP) {
+        ctx.fillStyle = '#ffffff';
+      } else {
+        ctx.fillStyle = tile.visible ? '#3a3a5c' : '#1a1a2e';
+      }
+      ctx.fillRect(x, y, 1, 1);
+    }
+  }
+
+  // Monsters
+  for (const m of monsters) {
+    if (m.curHp > 0 && currentMap[m.y][m.x].visible) {
+      ctx.fillStyle = m.color;
+      ctx.fillRect(m.x, m.y, 1, 1);
+    }
+  }
+
+  // Player
+  ctx.fillStyle = '#f0c040';
+  ctx.fillRect(player.x, player.y, 1, 1);
+}
+
+function renderSidebar() {
+  let html = '';
+  // Context hints
+  const tile = currentMap[player.y][player.x];
+  const itemHere = getItemAt(player.x, player.y);
+
+  if (tile.type === TILE.STAIRS_DOWN) html += '<div class="hint-line"><kbd>&gt;</kbd> Descend stairs</div>';
+  if (tile.type === TILE.STAIRS_UP) html += '<div class="hint-line"><kbd>&lt;</kbd> Ascend stairs</div>';
+  if (itemHere) html += `<div class="hint-line"><kbd>g</kbd> Pick up ${itemHere.name}</div>`;
+
+  // Adjacent monsters
+  for (const m of monsters) {
+    if (m.curHp > 0 && Math.abs(m.x - player.x) <= 1 && Math.abs(m.y - player.y) <= 1) {
+      html += `<div class="hint-line" style="color:${m.color}">Adjacent: ${m.name} (${m.curHp}/${m.maxHp})</div>`;
+    }
+  }
+
+  html += '<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px;">';
+  html += '<div class="hint-line"><kbd>Arrows/hjkl</kbd> Move</div>';
+  html += '<div class="hint-line"><kbd>yubn</kbd> Diagonal</div>';
+  html += '<div class="hint-line"><kbd>.</kbd> Wait</div>';
+  html += '<div class="hint-line"><kbd>g</kbd> Pick up</div>';
+  html += '<div class="hint-line"><kbd>i</kbd> Inventory</div>';
+  html += '<div class="hint-line"><kbd>?</kbd> Help</div>';
+  html += '</div>';
+
+  document.getElementById('hints-content').innerHTML = html;
+}
+
+function addLog(msg) {
+  messageLog.push(msg);
+  if (messageLog.length > 200) messageLog.shift();
+  const el = document.getElementById('message-log');
+  const div = document.createElement('div');
+  div.className = 'log-entry';
+  div.innerHTML = msg;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function addNarrative(msg) {
+  const el = document.getElementById('message-log');
+  const div = document.createElement('div');
+  div.className = 'log-entry narrative';
+  el.appendChild(div);
+  let i = 0;
+  function type() {
+    if (i < msg.length) {
+      div.textContent += msg[i++];
+      el.scrollTop = el.scrollHeight;
+      setTimeout(type, 18 + Math.random() * 12);
+    }
+  }
+  type();
+}
+
+function renderAll() {
+  renderMap();
+  renderStats();
+  renderMiniMap();
+  renderSidebar();
+  document.getElementById('floor-name').textContent = FLOOR_NAMES[player.floorLevel] + ' \u2014 Floor ' + player.floorLevel;
+  document.getElementById('turn-count').textContent = 'Turn ' + player.turnsPlayed;
+  document.getElementById('char-brief').textContent = player.name + ' \u2022 Lv' + player.level;
+}
+
+// ════════════════════════════════════════════════════
+// SECTION 13: FLOOR MANAGEMENT
+// ════════════════════════════════════════════════════
+
+function enterFloor(floorLevel, fromStairs) {
+  player.floorLevel = floorLevel;
+  if (floorLevel > player.deepestFloor) player.deepestFloor = floorLevel;
+
+  // Reset Halfling luck per floor
+  player.luckyUsed = false;
+  // Reset Cleric heals per floor
+  if (player.cls === 'cleric') player.healsRemaining = 3 + Math.floor(player.level / 2);
+
+  if (floors[floorLevel]) {
+    // Revisiting a floor
+    currentMap = floors[floorLevel].map;
+    currentRooms = floors[floorLevel].rooms;
+    monsters = floors[floorLevel].monsters;
+    items = floors[floorLevel].items;
+    // Place player at appropriate stairs
+    if (fromStairs === 'down') {
+      // Coming from above, place at stairs up
+      for (let y = 0; y < MAP_H; y++)
+        for (let x = 0; x < MAP_W; x++)
+          if (currentMap[y][x].type === TILE.STAIRS_UP) { player.x = x; player.y = y; }
+    } else {
+      // Coming from below, place at stairs down
+      for (let y = 0; y < MAP_H; y++)
+        for (let x = 0; x < MAP_W; x++)
+          if (currentMap[y][x].type === TILE.STAIRS_DOWN) { player.x = x; player.y = y; }
+    }
+  } else {
+    const { map, rooms } = generateFloor(floorLevel);
+    currentMap = map;
+    currentRooms = rooms;
+    monsters = spawnMonsters(rooms, floorLevel);
+    items = spawnItems(rooms, floorLevel);
+
+    // Place player in first room
+    player.x = currentRooms[0].cx;
+    player.y = currentRooms[0].cy;
+
+    floors[floorLevel] = { map: currentMap, rooms: currentRooms, monsters, items };
+  }
+
+  computeFOV(currentMap, player.x, player.y, player.visionRadius);
+
+  const desc = pick(FLOOR_DESCRIPTIONS[floorLevel] || FLOOR_DESCRIPTIONS[1]);
+  setTimeout(() => addNarrative(desc), 300);
+}
+
+function fadeTransition(callback) {
+  const fade = document.getElementById('fade-overlay');
+  fade.classList.add('active');
+  sfxStairs();
+  setTimeout(() => {
+    callback();
+    renderAll();
+    setTimeout(() => fade.classList.remove('active'), 100);
+  }, 500);
+}
+
+// ════════════════════════════════════════════════════
+// SECTION 14: PLAYER ACTIONS
+// ════════════════════════════════════════════════════
+
+function tryMove(dx, dy) {
+  const nx = player.x + dx;
+  const ny = player.y + dy;
+  if (nx < 0 || nx >= MAP_W || ny < 0 || ny >= MAP_H) return false;
+
+  const tile = currentMap[ny][nx];
+  if (tile.type === TILE.WALL) return false;
+
+  // Monster?
+  const monster = getMonsterAt(nx, ny);
+  if (monster) {
+    const result = attackMonster(monster);
+    // Warrior cleave
+    if (result === 'killed' && player.cls === 'warrior') {
+      const adj = monsters.filter(m => m.curHp > 0 && Math.abs(m.x - player.x) <= 1 && Math.abs(m.y - player.y) <= 1);
+      if (adj.length > 0) {
+        addLog('<span class="log-kill">Cleave!</span>');
+        attackMonster(adj[0]);
+      }
+    }
+    return true;
+  }
+
+  // Move
+  player.x = nx;
+  player.y = ny;
+  sfxStep();
+
+  // Trap?
+  if (tile.type === TILE.TRAP && !tile.revealed) {
+    // Rogue detects traps
+    if (player.cls === 'rogue' && Math.random() < 0.5) {
+      tile.revealed = true;
+      addLog('<span class="log-info">You notice a trap and step around it.</span>');
+    } else {
+      tile.revealed = true;
+      const save = rollDie(20) + statMod(player.stats.dex);
+      const dc = 10 + player.floorLevel;
+      if (save >= dc) {
+        addLog('<span class="log-info">You trigger a trap but leap aside! (DEX save ' + save + ' vs DC ' + dc + ')</span>');
+      } else {
+        const dmg = rollDice(1, 6, player.floorLevel);
+        player.hp -= dmg;
+        addLog(`<span class="log-player-hit">TRAP! You take ${dmg} damage! (DEX save ${save} vs DC ${dc})</span>`);
+        sfxPlayerHit();
+      }
+    }
+  }
+
+  return true;
+}
+
+function tryDescend() {
+  if (currentMap[player.y][player.x].type !== TILE.STAIRS_DOWN) {
+    addLog('<span class="log-info">There are no stairs here to descend.</span>');
+    return false;
+  }
+  if (player.floorLevel >= MAX_FLOORS) return false;
+  fadeTransition(() => enterFloor(player.floorLevel + 1, 'down'));
+  return true;
+}
+
+function tryAscend() {
+  if (currentMap[player.y][player.x].type !== TILE.STAIRS_UP) {
+    addLog('<span class="log-info">There are no stairs here to ascend.</span>');
+    return false;
+  }
+  if (player.floorLevel <= 1) {
+    addLog('<span class="log-info">You cannot leave the dungeon. Your fate lies below.</span>');
+    return false;
+  }
+  fadeTransition(() => enterFloor(player.floorLevel - 1, 'up'));
+  return true;
+}
+
+function tryPickup() {
+  const item = getItemAt(player.x, player.y);
+  if (!item) {
+    addLog('<span class="log-info">Nothing to pick up here.</span>');
+    return false;
+  }
+  if (item.type === 'gold') {
+    player.goldCollected += item.amount;
+    addLog(`<span class="log-gold">You pick up ${item.amount} gold.</span>`);
+    sfxGold();
+  } else {
+    if (player.inventory.length >= MAX_INVENTORY) {
+      addLog('<span class="log-info">Your inventory is full!</span>');
+      return false;
+    }
+    player.inventory.push(item);
+    addLog(`<span class="log-item">You pick up: ${item.name}</span>`);
+    sfxPickup();
+  }
+  // Remove from floor
+  const idx = items.indexOf(item);
+  if (idx >= 0) items.splice(idx, 1);
+  return true;
+}
+
+// ════════════════════════════════════════════════════
+// SECTION 15: CONDITIONS & LEVELING
+// ════════════════════════════════════════════════════
+
+function processConditions() {
+  for (let i = player.conditions.length - 1; i >= 0; i--) {
+    const c = player.conditions[i];
+    if (c.type === 'poisoned') {
+      player.hp -= c.dmg;
+      addLog('<span class="log-player-hit">Poison courses through your veins... (-' + c.dmg + ' HP)</span>');
+    }
+    c.duration--;
+    if (c.duration <= 0) {
+      addLog('<span class="log-info">The ' + c.type + ' effect wears off.</span>');
+      player.conditions.splice(i, 1);
+    }
+  }
+}
+
+function checkLevelUp() {
+  if (player.xp >= player.xpToLevel) {
+    player.level++;
+    player.xp -= player.xpToLevel;
+    player.xpToLevel = Math.floor(150 * player.level * 1.5);
+    const hpGain = Math.max(1, rollDie(CLASSES[player.cls].hitDie) + statMod(player.stats.con));
+    player.maxHp += hpGain;
+    player.hp = player.maxHp;
+    if (player.maxMana > 0) {
+      player.maxMana += 2;
+      player.mana = player.maxMana;
+    }
+    addLog(`<span class="log-kill">*** LEVEL UP! *** You are now level ${player.level}! (+${hpGain} HP)</span>`);
+    sfxLevelUp();
+    showLevelUp();
+    return true;
+  }
+  return false;
+}
+
+function checkPlayerDeath() {
+  if (player.hp <= 0) {
+    player.hp = 0;
+    sfxDeath();
+    gameState = GS.DEAD;
+    showDeathScreen();
+  }
+}
+
+// ════════════════════════════════════════════════════
+// SECTION 16: UI SCREENS
+// ════════════════════════════════════════════════════
+
+// Character Creation
+function showCharCreate() {
+  createStep = 0;
+  createData = { name: '', race: null, cls: null, stats: null, rerolls: 3 };
+  document.getElementById('charcreate-overlay').classList.remove('hidden');
+  renderCreateStep();
+}
+
+function renderCreateStep() {
+  const content = document.getElementById('create-content');
+  const label = document.getElementById('create-step-label');
+  const nav = document.getElementById('create-nav');
+
+  if (createStep === 0) {
+    label.textContent = 'Step 1: Name your hero';
+    content.innerHTML = '<input class="name-input" id="name-input" type="text" maxlength="20" placeholder="Enter name..." autofocus>';
+    nav.textContent = 'Press ENTER to continue';
+    setTimeout(() => document.getElementById('name-input').focus(), 50);
+  } else if (createStep === 1) {
+    label.textContent = 'Step 2: Choose your race';
+    let html = '<div class="create-options">';
+    const keys = Object.keys(RACES);
+    keys.forEach((key, i) => {
+      const r = RACES[key];
+      const mods = Object.entries(r.mods).filter(([,v]) => v !== 0).map(([k,v]) => k.toUpperCase() + ' ' + modStr(v)).join(', ');
+      html += `<div class="create-option" data-key="${key}">
+        <div class="opt-name">[${i+1}] ${r.name}</div>
+        <div class="opt-desc">${r.desc}</div>
+        <div class="opt-stats">${mods} — ${r.passive}</div>
+      </div>`;
+    });
+    html += '</div>';
+    content.innerHTML = html;
+    nav.textContent = 'Press 1-4 to select';
+  } else if (createStep === 2) {
+    label.textContent = 'Step 3: Choose your class';
+    let html = '<div class="create-options">';
+    const keys = Object.keys(CLASSES);
+    keys.forEach((key, i) => {
+      const c = CLASSES[key];
+      html += `<div class="create-option" data-key="${key}">
+        <div class="opt-name">[${i+1}] ${c.name}</div>
+        <div class="opt-desc">${c.desc}</div>
+        <div class="opt-stats">Hit Die: d${c.hitDie} — ${c.ability}</div>
+      </div>`;
+    });
+    html += '</div>';
+    content.innerHTML = html;
+    nav.textContent = 'Press 1-4 to select';
+  } else if (createStep === 3) {
+    label.textContent = 'Step 4: Roll your attributes';
+    if (!createData.stats) {
+      createData.stats = {};
+      for (const s of ['str','dex','con','int','wis']) createData.stats[s] = roll4d6drop();
+    }
+    let html = '<div class="stat-roll-display">';
+    for (const s of ['str','dex','con','int','wis']) {
+      const v = createData.stats[s];
+      const race = RACES[createData.race];
+      const final = v + (race.mods[s] || 0);
+      const m = statMod(final);
+      const modCls = m >= 0 ? 'pos' : 'neg';
+      html += `<div class="stat-box">
+        <div class="stat-label">${s.toUpperCase()}</div>
+        <div class="stat-value">${v}</div>
+        <div class="stat-modifier ${modCls}" style="color:var(--${m >= 0 ? 'hp-full' : 'hp-danger'})">${race.mods[s] ? ' (' + modStr(race.mods[s]) + ' race)' : ''} → ${final} (${modStr(m)})</div>
+      </div>`;
+    }
+    html += '</div>';
+    html += `<div class="reroll-info">Press R to reroll (${createData.rerolls} remaining) — Press ENTER to accept</div>`;
+    content.innerHTML = html;
+    nav.textContent = '';
+  }
+}
+
+function handleCharCreateInput(e) {
+  if (createStep === 0) {
+    if (e.key === 'Enter') {
+      const input = document.getElementById('name-input');
+      const name = input.value.trim();
+      if (name.length === 0) return;
+      createData.name = name;
+      createStep = 1;
+      renderCreateStep();
+    }
+  } else if (createStep === 1) {
+    const keys = Object.keys(RACES);
+    const idx = parseInt(e.key) - 1;
+    if (idx >= 0 && idx < keys.length) {
+      createData.race = keys[idx];
+      createStep = 2;
+      renderCreateStep();
+    }
+  } else if (createStep === 2) {
+    const keys = Object.keys(CLASSES);
+    const idx = parseInt(e.key) - 1;
+    if (idx >= 0 && idx < keys.length) {
+      createData.cls = keys[idx];
+      createStep = 3;
+      createData.stats = null;
+      renderCreateStep();
+    }
+  } else if (createStep === 3) {
+    if (e.key === 'r' || e.key === 'R') {
+      if (createData.rerolls > 0) {
+        createData.rerolls--;
+        createData.stats = null;
+        renderCreateStep();
+      }
+    } else if (e.key === 'Enter') {
+      startGame();
+    }
+  }
+}
+
+function startGame() {
+  document.getElementById('charcreate-overlay').classList.add('hidden');
+  document.getElementById('game-layout').style.display = 'grid';
+
+  player = createPlayer(createData.name, createData.race, createData.cls, createData.stats);
+  floors = {};
+  messageLog = [];
+  document.getElementById('message-log').innerHTML = '';
+
+  enterFloor(1, null);
+  addLog('<span class="log-info">Welcome, ' + player.name + '. Your descent begins.</span>');
+  renderAll();
+  gameState = GS.PLAYING;
+}
+
+// Inventory screen
+function showInventory() {
+  gameState = GS.INVENTORY;
+  document.getElementById('inventory-overlay').classList.remove('hidden');
+  renderInventory();
+}
+
+function renderInventory() {
+  const list = document.getElementById('inv-list');
+  const footer = document.getElementById('inv-footer');
+
+  if (player.inventory.length === 0) {
+    list.innerHTML = '<div style="color:var(--text-faded);padding:8px;">Your pack is empty.</div>';
+  } else {
+    let html = '';
+    player.inventory.forEach((item, i) => {
+      const letter = String.fromCharCode(97 + i);
+      const equipped = Object.values(player.equipment).includes(item);
+      html += `<div class="inv-item">
+        <span><span class="inv-key">${letter})</span> <span class="inv-name${equipped ? ' equipped' : ''}">${item.name}${equipped ? ' (equipped)' : ''}</span></span>
+        <span class="inv-type">${item.type}</span>
+      </div>`;
+    });
+    list.innerHTML = html;
+  }
+  footer.textContent = `${player.inventory.length}/${MAX_INVENTORY} — [a-t] use/equip — [d]+letter drop — [ESC] close`;
+}
+
+function handleInventoryInput(e) {
+  if (e.key === 'Escape' || e.key === 'i') {
+    document.getElementById('inventory-overlay').classList.add('hidden');
+    gameState = GS.PLAYING;
+    return;
+  }
+
+  const idx = e.key.charCodeAt(0) - 97;
+  if (idx >= 0 && idx < player.inventory.length) {
+    const item = player.inventory[idx];
+    useItem(item, idx);
+    renderInventory();
+    renderStats();
+  }
+}
+
+function useItem(item, idx) {
+  if (item.type === 'potion') {
+    if (item.effect === 'heal') {
+      const healed = rollDmg(item.amount);
+      player.hp = Math.min(player.maxHp, player.hp + healed);
+      addLog(`<span class="log-item">You drink the ${item.name}. Healed ${healed} HP!</span>`);
+    } else if (item.effect === 'buff_str') {
+      player.conditions.push({ type: 'strengthened', duration: item.duration, stat: 'str', amount: 4 });
+      player.stats.str += 4;
+      addLog(`<span class="log-item">You drink the ${item.name}. You feel powerful!</span>`);
+    } else if (item.effect === 'buff_dex') {
+      player.conditions.push({ type: 'hastened', duration: item.duration, stat: 'dex', amount: 4 });
+      player.stats.dex += 4;
+      recalcAC();
+      addLog(`<span class="log-item">You drink the ${item.name}. You feel swift!</span>`);
+    }
+    sfxPickup();
+    player.inventory.splice(idx, 1);
+  } else if (item.type === 'scroll') {
+    if (item.effect === 'fireball') {
+      // Damage all visible monsters
+      let killed = 0;
+      for (const m of monsters) {
+        if (m.curHp > 0 && currentMap[m.y][m.x].visible) {
+          const dmg = rollDmg(item.damage);
+          m.curHp -= dmg;
+          if (m.curHp <= 0) { killed++; player.monstersKilled++; player.xp += Math.floor(m.xp * (player.race === 'human' ? 1.1 : 1)); }
+        }
+      }
+      addLog(`<span class="log-damage">Flames engulf the room! ${killed} monster(s) affected!</span>`);
+    } else if (item.effect === 'teleport') {
+      const room = pick(currentRooms);
+      player.x = room.cx;
+      player.y = room.cy;
+      computeFOV(currentMap, player.x, player.y, player.visionRadius);
+      addLog('<span class="log-item">Reality shifts — you teleport!</span>');
+    } else if (item.effect === 'reveal_map') {
+      for (let y = 0; y < MAP_H; y++)
+        for (let x = 0; x < MAP_W; x++)
+          currentMap[y][x].explored = true;
+      addLog('<span class="log-item">The dungeon layout burns into your mind!</span>');
+    }
+    sfxPickup();
+    player.inventory.splice(idx, 1);
+    document.getElementById('inventory-overlay').classList.add('hidden');
+    gameState = GS.PLAYING;
+    renderAll();
+  } else if (item.type === 'weapon') {
+    if (player.equipment.weapon === item) {
+      player.equipment.weapon = null;
+      addLog('<span class="log-info">You unequip the ' + item.name + '.</span>');
+    } else {
+      player.equipment.weapon = item;
+      addLog('<span class="log-item">You equip the ' + item.name + '.</span>');
+    }
+  } else if (item.type === 'armor') {
+    if (player.equipment.armor === item) {
+      player.equipment.armor = null;
+      recalcAC();
+      addLog('<span class="log-info">You remove the ' + item.name + '.</span>');
+    } else {
+      player.equipment.armor = item;
+      recalcAC();
+      addLog('<span class="log-item">You don the ' + item.name + '.</span>');
+    }
+  }
+}
+
+// Help screen
+function showHelp() {
+  gameState = GS.HELP;
+  document.getElementById('help-overlay').classList.remove('hidden');
+  document.getElementById('help-content').innerHTML = `
+    <div class="help-section"><h3>MOVEMENT</h3>
+      <div class="help-row"><kbd>Arrows/hjkl</kbd><span>Cardinal movement</span></div>
+      <div class="help-row"><kbd>y u b n</kbd><span>Diagonal movement</span></div>
+      <div class="help-row"><kbd>7 8 9 4 6 1 2 3</kbd><span>Numpad movement</span></div>
+      <div class="help-row"><kbd>. / 5</kbd><span>Wait one turn</span></div>
+    </div>
+    <div class="help-section"><h3>ACTIONS</h3>
+      <div class="help-row"><kbd>g / ,</kbd><span>Pick up item</span></div>
+      <div class="help-row"><kbd>&gt;</kbd><span>Descend stairs</span></div>
+      <div class="help-row"><kbd>&lt;</kbd><span>Ascend stairs</span></div>
+      <div class="help-row"><kbd>i</kbd><span>Open inventory</span></div>
+      <div class="help-row"><kbd>?</kbd><span>This help screen</span></div>
+    </div>
+    <div class="help-section"><h3>COMBAT</h3>
+      <div class="help-row"><kbd>Move into</kbd><span>Melee attack a monster</span></div>
+    </div>
+    <div style="margin-top:12px;color:var(--text-faded);font-size:11px;">Press ESC or ? to close</div>
+  `;
+}
+
+// Level-up screen
+function showLevelUp() {
+  gameState = GS.LEVEL_UP;
+  document.getElementById('levelup-overlay').classList.remove('hidden');
+  document.getElementById('lu-info').textContent = `You have reached level ${player.level}! Choose a stat to improve:`;
+  let html = '<div class="create-options">';
+  const stats = ['str','dex','con','int','wis'];
+  stats.forEach((s, i) => {
+    html += `<div class="create-option" data-key="${s}">
+      <div class="opt-name">[${i+1}] ${s.toUpperCase()}: ${player.stats[s]} → ${player.stats[s] + 1}</div>
+    </div>`;
+  });
+  html += '</div>';
+  document.getElementById('lu-content').innerHTML = html;
+}
+
+function handleLevelUpInput(e) {
+  const idx = parseInt(e.key) - 1;
+  const stats = ['str','dex','con','int','wis'];
+  if (idx >= 0 && idx < stats.length) {
+    player.stats[stats[idx]]++;
+    recalcAC();
+    addLog('<span class="log-kill">' + stats[idx].toUpperCase() + ' increased to ' + player.stats[stats[idx]] + '!</span>');
+    document.getElementById('levelup-overlay').classList.add('hidden');
+    gameState = GS.PLAYING;
+    renderAll();
+  }
+}
+
+// Death screen
+function showDeathScreen() {
+  document.getElementById('game-layout').style.display = 'none';
+  document.getElementById('death-overlay').classList.remove('hidden');
+
+  const cause = 'the dungeon';
+  const lastMonster = monsters.find(m => m.curHp > 0 && Math.abs(m.x - player.x) <= 2 && Math.abs(m.y - player.y) <= 2);
+  const killer = lastMonster ? lastMonster.name : 'the darkness';
+  const score = player.monstersKilled * 10 + player.goldCollected + player.deepestFloor * 100 + player.level * 50;
+
+  const tomb = `
+          ___________
+         /           \\
+        /   R.I.P.    \\
+       /               \\
+      |  ${player.name.padEnd(16)}|
+      |  ${(RACES[player.race].name + ' ' + CLASSES[player.cls].name).padEnd(16)}|
+      |  Level ${String(player.level).padEnd(9)}|
+      |                |
+      |  Slain by      |
+      |  ${killer.padEnd(14)}|
+      |  on floor ${String(player.floorLevel).padEnd(5)}|
+      |                |
+      |  Turns: ${String(player.turnsPlayed).padEnd(7)}|
+      |  Kills: ${String(player.monstersKilled).padEnd(7)}|
+      |  Gold:  ${String(player.goldCollected).padEnd(7)}|
+      |                |
+       \\  Score: ${String(score).padEnd(6)}/
+        \\______________/
+              | |
+          ____|_|____
+         |__________|`;
+
+  document.getElementById('tombstone-art').textContent = tomb;
+
+  // Save high score
+  const scores = JSON.parse(localStorage.getItem('deep_scores') || '[]');
+  scores.push({ name: player.name, score, level: player.level, floor: player.deepestFloor, race: player.race, cls: player.cls });
+  scores.sort((a, b) => b.score - a.score);
+  scores.splice(10);
+  localStorage.setItem('deep_scores', JSON.stringify(scores));
+}
+
+// ════════════════════════════════════════════════════
+// SECTION 17: INPUT HANDLING
+// ════════════════════════════════════════════════════
+
+function handleInput(e) {
+  initAudio();
+
+  switch (gameState) {
+    case GS.TITLE:
+      if (e.key === 'Enter') {
+        document.getElementById('title-overlay').classList.add('hidden');
+        showCharCreate();
+        gameState = GS.CHAR_CREATE;
+      }
+      break;
+
+    case GS.CHAR_CREATE:
+      handleCharCreateInput(e);
+      break;
+
+    case GS.PLAYING:
+      handlePlayingInput(e);
+      break;
+
+    case GS.INVENTORY:
+      handleInventoryInput(e);
+      break;
+
+    case GS.HELP:
+      if (e.key === 'Escape' || e.key === '?') {
+        document.getElementById('help-overlay').classList.add('hidden');
+        gameState = GS.PLAYING;
+      }
+      break;
+
+    case GS.LEVEL_UP:
+      handleLevelUpInput(e);
+      break;
+
+    case GS.DEAD:
+      if (e.key === 'Enter') {
+        document.getElementById('death-overlay').classList.add('hidden');
+        document.getElementById('title-overlay').classList.remove('hidden');
+        gameState = GS.TITLE;
+      }
+      break;
+  }
+}
+
+function handlePlayingInput(e) {
+  let acted = false;
+
+  switch (e.key) {
+    case 'ArrowUp':    case 'k': case '8': acted = tryMove(0, -1); break;
+    case 'ArrowDown':  case 'j': case '2': acted = tryMove(0, 1);  break;
+    case 'ArrowLeft':  case 'h': case '4': acted = tryMove(-1, 0); break;
+    case 'ArrowRight': case 'l': case '6': acted = tryMove(1, 0);  break;
+    case 'y': case '7': acted = tryMove(-1, -1); break;
+    case 'u': case '9': acted = tryMove(1, -1);  break;
+    case 'b': case '1': acted = tryMove(-1, 1);  break;
+    case 'n': case '3': acted = tryMove(1, 1);   break;
+    case '.': case '5': acted = true; break; // Wait
+    case '>': acted = tryDescend(); break;
+    case '<': acted = tryAscend(); break;
+    case 'g': case ',': acted = tryPickup(); break;
+    case 'i': showInventory(); return;
+    case '?': showHelp(); return;
+    default: return;
+  }
+
+  if (acted) {
+    player.turnsPlayed++;
+    processMonsterTurns();
+    processConditions();
+    computeFOV(currentMap, player.x, player.y, player.visionRadius);
+    renderAll();
+    checkPlayerDeath();
+    if (gameState === GS.PLAYING) checkLevelUp();
+  }
+}
+
+// ════════════════════════════════════════════════════
+// SECTION 18: INITIALIZATION
+// ════════════════════════════════════════════════════
+
+document.addEventListener('keydown', handleInput);
+
+})();
+</script>
+</body>
+</html>
