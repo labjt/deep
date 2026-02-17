@@ -510,6 +510,8 @@
   .inv-item .inv-name { color: var(--item-common); }
   .inv-item .inv-name.equipped { color: var(--player); }
   .inv-item .inv-type { color: var(--text-faded); font-size: 10px; }
+  .inv-category { color: var(--text-faded); font-size: 10px; text-transform: uppercase; letter-spacing: 2px; padding: 6px 8px 2px; border-bottom: 1px solid var(--border); margin-top: 4px; }
+  .inv-category:first-child { margin-top: 0; }
   .inv-detail {
     margin-top: 10px;
     padding: 10px 12px;
@@ -3220,39 +3222,59 @@ function getItemDescription(item) {
   return html;
 }
 
-// Build grouped inventory view — consumables (potions/scrolls) stack by name,
+// Build grouped inventory view — sorted by category, consumables stack by name,
 // equipment always listed individually since enchantments can differ.
 let invDisplayMap = []; // maps display index -> inventory index (first of that stack)
 
+const INV_CATEGORIES = [
+  { key: 'weapon', label: 'Weapons' },
+  { key: 'armor',  label: 'Armor' },
+  { key: 'potion', label: 'Potions' },
+  { key: 'scroll', label: 'Scrolls' }
+];
+
 function buildInventoryStacks() {
   invDisplayMap = [];
-  const stacks = [];
+  const categorized = {};
   const consumableCounts = {};
 
+  // Bucket items by type
   player.inventory.forEach((item, i) => {
-    if (item.type === 'potion' || item.type === 'scroll') {
+    const cat = item.type;
+    if (!categorized[cat]) categorized[cat] = [];
+
+    if (cat === 'potion' || cat === 'scroll') {
       if (consumableCounts[item.name] !== undefined) {
-        // Already stacked — increment count
         consumableCounts[item.name].count++;
       } else {
-        // New stack
         consumableCounts[item.name] = { item, firstIdx: i, count: 1 };
-        stacks.push({ item, firstIdx: i, type: 'stack', key: item.name });
+        categorized[cat].push({ item, firstIdx: i, type: 'stack', key: item.name, count: 1 });
       }
     } else {
-      stacks.push({ item, firstIdx: i, count: 1, type: 'single' });
+      categorized[cat].push({ item, firstIdx: i, count: 1, type: 'single' });
     }
   });
 
-  // Resolve counts
-  for (const s of stacks) {
-    if (s.type === 'stack') {
-      s.count = consumableCounts[s.key].count;
+  // Build final ordered list with category labels
+  const result = [];
+  for (const cat of INV_CATEGORIES) {
+    const entries = categorized[cat.key];
+    if (!entries || entries.length === 0) continue;
+    // Resolve consumable counts
+    for (const s of entries) {
+      if (s.type === 'stack') s.count = consumableCounts[s.key].count;
     }
-    invDisplayMap.push(s.firstIdx);
+    result.push({ category: cat.label, entries });
   }
 
-  return stacks;
+  // Build display map (flat list of real indices for key mapping)
+  for (const group of result) {
+    for (const s of group.entries) {
+      invDisplayMap.push(s.firstIdx);
+    }
+  }
+
+  return result;
 }
 
 function renderInventory() {
@@ -3262,18 +3284,22 @@ function renderInventory() {
   if (player.inventory.length === 0) {
     list.innerHTML = '<div style="color:var(--text-faded);padding:8px;">Your pack is empty.</div>';
   } else {
-    const stacks = buildInventoryStacks();
+    const groups = buildInventoryStacks();
     let html = '';
-    stacks.forEach((s, i) => {
-      const letter = String.fromCharCode(97 + i);
-      const equipped = Object.values(player.equipment).includes(s.item);
-      const inspecting = inspectedItem === s.item;
-      const countStr = s.count > 1 ? ` <span style="color:var(--text-dim)">(x${s.count})</span>` : '';
-      html += `<div class="inv-item" style="${inspecting ? 'background:var(--bg-surface);' : ''}">
-        <span><span class="inv-key">${letter})</span> <span class="inv-name${equipped ? ' equipped' : ''}">${s.item.name}${countStr}${equipped ? ' (equipped)' : ''}</span></span>
-        <span class="inv-type">${s.item.type}</span>
-      </div>`;
-    });
+    let letterIdx = 0;
+    for (const group of groups) {
+      html += `<div class="inv-category">${group.category}</div>`;
+      for (const s of group.entries) {
+        const letter = String.fromCharCode(97 + letterIdx);
+        const equipped = Object.values(player.equipment).includes(s.item);
+        const inspecting = inspectedItem === s.item;
+        const countStr = s.count > 1 ? ` <span style="color:var(--text-dim)">(x${s.count})</span>` : '';
+        html += `<div class="inv-item" style="${inspecting ? 'background:var(--bg-surface);' : ''}">
+          <span><span class="inv-key">${letter})</span> <span class="inv-name${equipped ? ' equipped' : ''}">${s.item.name}${countStr}${equipped ? ' (equipped)' : ''}</span></span>
+        </div>`;
+        letterIdx++;
+      }
+    }
     list.innerHTML = html;
   }
   footer.textContent = `${player.inventory.length}/${MAX_INVENTORY} — [a-t] use/equip — [TAB]+letter inspect — [x]+letter drop — [ESC] close`;
