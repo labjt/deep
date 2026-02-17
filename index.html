@@ -533,6 +533,46 @@
   .inv-detail .detail-compare { color: var(--xp); font-size: 10px; }
   .inv-footer { color: var(--text-faded); font-size: 11px; margin-top: 12px; }
 
+  /* Lore journal overlay */
+  #lore-screen {
+    max-width: 520px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  #lore-screen .lore-header {
+    font-family: 'Cinzel', serif;
+    color: #d4a857;
+    font-size: 14px;
+    letter-spacing: 3px;
+    margin-bottom: 8px;
+  }
+  #lore-screen .lore-title {
+    font-family: 'Crimson Text', serif;
+    font-style: italic;
+    color: var(--text-bright);
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+  #lore-screen .lore-divider {
+    border-top: 1px solid #d4a85733;
+    margin-bottom: 16px;
+  }
+  #lore-screen .lore-text {
+    font-family: 'Crimson Text', serif;
+    color: var(--text-dim);
+    font-size: 15px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    min-height: 120px;
+  }
+  #lore-screen .lore-footer {
+    color: var(--text-faded);
+    font-size: 11px;
+    margin-top: 20px;
+    animation: blink 1.5s ease-in-out infinite;
+  }
+
   /* Help overlay */
   #help-screen {
     max-width: 500px;
@@ -781,6 +821,17 @@
     <div class="inv-list" id="inv-list"></div>
     <div class="inv-detail" id="inv-detail"></div>
     <div class="inv-footer" id="inv-footer"></div>
+  </div>
+</div>
+
+<!-- Lore Journal -->
+<div id="lore-overlay" class="overlay hidden">
+  <div id="lore-screen">
+    <div class="lore-header">JOURNAL</div>
+    <div class="lore-title" id="lore-title"></div>
+    <div class="lore-divider"></div>
+    <div class="lore-text" id="lore-text"></div>
+    <div class="lore-footer">Press ESC or ENTER to close &mdash; SPACE to skip</div>
   </div>
 </div>
 
@@ -1356,6 +1407,112 @@ const SCROLLS = [
   { name:'Scroll of Mapping',   effect:'reveal_map', ch:'?', color:'#4488ff', value:12 }
 ];
 
+const LORE_SCROLLS = [
+  {
+    floor: 1, name: 'Torn Journal Page', title: 'Entry I: The Descent',
+    text: "Day 1. I write this by torchlight at the mouth of the deep. The Guild sent me to map these caverns after the miners broke through into something older. The air here tastes wrong \u2014 metallic, alive. I can hear water below, and something else. A rhythm, like breathing. I tell myself it is the wind.\n\nI have marked my path with chalk. I will not become another name scratched into the stone.",
+    ch: '\u00B6', color: '#d4a857', value: 0
+  },
+  {
+    floor: 2, name: 'Water-Stained Journal', title: 'Entry II: The Fungal Dark',
+    text: "Day 4. The fungi here glow with their own light \u2014 beautiful and terrible. I found boot prints in the dust that are not mine. Someone else came this way and did not return. The chalk marks I left yesterday have been... rearranged. Not erased. Moved. As if something wanted me to go a different way.\n\nI followed my compass instead. I am not a fool.",
+    ch: '\u00B6', color: '#d4a857', value: 0
+  },
+  {
+    floor: 3, name: 'Crumpled Parchment', title: 'Entry III: Whispers',
+    text: "Day 7. The walls whisper. Not words exactly, but almost-words, as if a voice were speaking just below the threshold of understanding. I caught myself leaning in to listen. When I pulled away, an hour had passed.\n\nI found a skeleton clutching a journal much like this one. The last entry read only: 'It knows my name.' I did not read the name. I will not read the name.",
+    ch: '\u00B6', color: '#d4a857', value: 0
+  },
+  {
+    floor: 4, name: 'Bloodstained Journal', title: 'Entry IV: The Dead Below',
+    text: "Day 12. The catacombs stretch in every direction. These are not natural caves \u2014 someone BUILT this. Thousands of burial niches, stacked floor to ceiling, each one sealed with a name plaque. Most of the names are in no language I recognize.\n\nSome of the niches are empty from the inside. The seals broken outward.\n\nMy torch burns blue here. That means something. I cannot remember what.",
+    ch: '\u00B6', color: '#d4a857', value: 0
+  },
+  {
+    floor: 5, name: 'Damp Journal Fragment', title: 'Entry V: Rising Water',
+    text: "Day 16. The water is rising. Not slowly \u2014 in surges, as if something far below is breathing and the water rises with each exhale. I found an air pocket and made camp on a stone shelf.\n\nIn the still water I saw my reflection. It was not doing what I was doing. It was writing in its own journal, and when it looked up at me, it smiled.\n\nI do not look at the water anymore.",
+    ch: '\u00B6', color: '#d4a857', value: 0
+  },
+  {
+    floor: 6, name: 'Scorched Journal', title: 'Entry VI: The Builders',
+    text: "Day 20. I found the machines. Vast iron works, gears the size of houses, all silent now. Dwarven, I think, but older than any dwarven craft I have studied. These halls were not mined \u2014 they were MANUFACTURED.\n\nThere are instruction plates bolted to the walls in a script I almost recognize. One word keeps repeating. I have been sounding it out for hours. I think it means 'containment.'\n\nContainment of what?",
+    ch: '\u00B6', color: '#d4a857', value: 0
+  },
+  {
+    floor: 7, name: 'Heat-Warped Journal', title: 'Entry VII: The Edge',
+    text: "Day 25. I have reached the boundary between the built world and something else. Below the iron floors, the earth glows. The temperature is barely survivable. My water skins burst from the heat.\n\nI found another explorer's camp \u2014 recent, perhaps days old. Their journal ended mid-sentence. The last word was 'BEHIND'\n\nI have started walking with my back to walls.",
+    ch: '\u00B6', color: '#d4a857', value: 0
+  },
+  {
+    floor: 8, name: 'Charred Parchment', title: 'Entry VIII: The Furnace Heart',
+    text: "Day 30. The containment is failing. I understand now what the dwarves built here \u2014 not a mine, not a fortress. A CAGE. The entire mountain is a cage, and the machine was the lock.\n\nThe machine is broken. Someone broke it deliberately. I found tool marks, precise and purposeful. Someone WANTED what is below to wake up.\n\nThe ground trembles constantly now. The thing beneath is stirring.",
+    ch: '\u00B6', color: '#d4a857', value: 0
+  },
+  {
+    floor: 9, name: 'Obsidian-Etched Note', title: 'Entry IX: The Truth',
+    text: "Day 33. I can see it through the obsidian walls. Not clearly \u2014 shapes, movement, an eye larger than I am. It has been watching me since I entered. Every room, every corridor, every moment of false safety \u2014 observed.\n\nThe whispers were never the walls. They were its voice, too vast for human ears to parse into words. I understand them now. It is saying the same thing, over and over:\n\n'Deeper. Come deeper.'",
+    ch: '\u00B6', color: '#d4a857', value: 0
+  },
+  {
+    floor: 10, name: 'Final Journal Entry', title: 'Entry X: The Bottom',
+    text: "I do not know what day it is. There is no more pretending. The dragon is not the treasure guardian the stories describe. It is the LAST LOCK. The final piece of the containment. It guards nothing above \u2014 it guards against what lies BELOW.\n\nIf you are reading this, you are already too deep. The mountain wants you here. It has always wanted you here.\n\nDo not kill the dragon.\n\nGods forgive me. I think I am going to kill the dragon.\n\n\u2014 Elara Voss, Cartographer, Guild of the Iron Compass",
+    ch: '\u00B6', color: '#d4a857', value: 0
+  }
+];
+
+const ENVIRONMENTAL_EVENTS = [
+  // Tier 0: Floors 1-3 — Caverns
+  [
+    { text: 'A cold breath of air extinguishes your torch for a heartbeat. When it relights, the shadows have moved.', log: 'A gust of cold air makes your torch flicker.', effect: null },
+    { text: 'You hear footsteps behind you. When you turn, there is nothing. When you turn back, you are certain something has changed.', log: 'Footsteps echo behind you, then vanish.', effect: null },
+    { text: 'A rat the size of a cat watches you from a ledge, then slowly shakes its head before vanishing into a crack.', log: 'An unnervingly large rat stares at you, then disappears.', effect: null },
+    { text: 'Water drips from the ceiling onto your neck. It is warm.', log: 'Warm water drips on you from above.', effect: null },
+    { text: 'Scratch marks appear on the wall beside you. They were not there a moment ago.', log: 'Fresh scratch marks appear on the wall.', effect: null },
+    { text: 'You find a single copper coin on the ground, warm to the touch, as if someone just dropped it.', log: 'You find a warm coin on the ground.', effect: 'coin1' },
+    { text: 'A distant sound \u2014 metal on stone, rhythmic, purposeful. Mining? Digging? It stops the moment you notice it.', log: 'A distant metallic rhythm stops abruptly.', effect: null },
+    { text: 'The air pressure shifts. Your ears pop. Somewhere deep below, something just moved.', log: 'Your ears pop as the air pressure shifts.', effect: null },
+    { text: 'A chalk arrow on the wall points deeper into the dungeon. The chalk is fresh.', log: 'A fresh chalk arrow points deeper.', effect: null },
+    { text: 'For a moment, your shadow on the wall has a different shape. Taller. Thinner. Then it is normal again.', log: 'Your shadow flickers into a different shape.', effect: null }
+  ],
+  // Tier 1: Floors 4-6 — Crypts
+  [
+    { text: 'A ghostly figure stands at the end of the corridor. It raises one hand, as if in warning, then dissolves into mist.', log: 'A ghostly figure appears, warns you, and vanishes.', effect: null },
+    { text: 'Every candle in the room ignites at once, burns blue for three seconds, then dies.', log: 'Candles ignite blue, then extinguish.', effect: null },
+    { text: "You hear singing. A woman's voice, beautiful and sad, echoing from everywhere and nowhere.", log: "A woman's singing echoes through the crypt.", effect: null },
+    { text: "A coffin lid slides open an inch. A whisper escapes: 'Not yet.' The lid slides shut.", log: "A whisper from a coffin: 'Not yet.'", effect: null },
+    { text: 'Cold hands brush your shoulder from behind. There is nobody there. The cold lingers.', log: 'Invisible cold hands touch your shoulder.', effect: 'chill' },
+    { text: 'Names begin appearing on the wall, written in frost. Your name is among them.', log: 'Frost-written names appear on the wall. Yours is among them.', effect: null },
+    { text: "A prayer book on a lectern flips to a specific page as you pass. The text reads: 'For those who descend and do not return.'", log: 'A prayer book opens to a page about those who descend.', effect: null },
+    { text: "You step on something that crunches. Not bone \u2014 a small wooden toy. A child's plaything, here in the crypt.", log: "You step on a child's toy in the crypt.", effect: null },
+    { text: 'The temperature drops so suddenly your breath becomes visible. Frost forms on your armor. Then it passes.', log: 'Temperature plummets; frost forms on your armor.', effect: 'chill' },
+    { text: 'A bell tolls once, deep and resonant. There is no bell in this room. There is no bell on this floor.', log: 'A phantom bell tolls once.', effect: null }
+  ],
+  // Tier 2: Floors 7-9 — Deep/volcanic
+  [
+    { text: 'The floor beneath you pulses like a heartbeat. Once. Twice. Then stops.', log: 'The floor pulses like a heartbeat.', effect: null },
+    { text: 'You blink and you are facing the opposite direction. Your footprints lead away from where you thought you came.', log: 'You suddenly face the wrong direction.', effect: null },
+    { text: "A voice from the stone speaks one word in a language you do not know. You understand it anyway. It means 'deeper.'", log: "A voice from the stone says a word meaning 'deeper.'", effect: null },
+    { text: 'Your reflection in the obsidian wall reaches out and touches the glass from the other side. Where its fingers press, cracks appear.', log: 'Your reflection moves independently in the obsidian.', effect: null },
+    { text: "Time skips. You are ten paces ahead of where you were, and your torch has burned down an hour's worth.", log: 'You lose time \u2014 your torch has burned down significantly.', effect: null },
+    { text: 'Runes on the wall flare to life, pulsing in sequence toward the deeper floors, as if pointing the way.', log: 'Runes flare to life, pointing deeper.', effect: null },
+    { text: 'A tremor shakes loose a stone from the ceiling. Beneath it: a single gold coin pressed into the rock, impossibly old.', log: 'A tremor shakes loose a hidden coin.', effect: 'coin2' },
+    { text: 'The shadows in this room do not match the objects that cast them. They belong to furniture and figures that are not here.', log: 'Shadows in this room belong to things that aren\'t here.', effect: null },
+    { text: 'You hear your own voice, ahead of you in the corridor, saying words you have not spoken yet.', log: 'You hear your own voice speaking ahead of you.', effect: null },
+    { text: 'The heat intensifies for a moment, and you smell something vast and reptilian. It passes.', log: 'A wave of reptilian heat washes over you.', effect: null }
+  ],
+  // Tier 3: Floor 10 — Dragon's domain
+  [
+    { text: 'A scale the size of a shield falls from the ceiling and shatters like glass at your feet.', log: 'A massive dragon scale falls and shatters.', effect: null },
+    { text: 'The gold beneath your feet shifts and settles. Something beneath the hoard is breathing.', log: "The gold hoard shifts with something's breathing.", effect: null },
+    { text: "A skeleton in adventurer's gear sits against the wall. In its hand, a note: 'It sleeps with one eye open.'", log: "A dead adventurer's note warns: it sleeps with one eye open.", effect: null },
+    { text: 'The walls exhale heat. For a moment, you see the outline of something colossal pressed against the stone, as if the mountain itself is the dragon.', log: 'Heat pulses from the walls in a vast silhouette.', effect: null },
+    { text: 'Coins rain from the ceiling. When they land, they are already warm. Everything here belongs to the dragon.', log: 'Warm coins rain from the ceiling.', effect: 'coin3' },
+    { text: 'A door slams shut behind you. When you turn, there is no door. There never was a door.', log: 'A door slams shut behind you \u2014 but there is no door.', effect: null },
+    { text: 'The air itself seems to vibrate with a low, endless growl. Not a warning. A welcome.', log: 'A vast growl fills the air. It sounds welcoming.', effect: null },
+    { text: "You find words burned into the floor: 'SHE REMEMBERS EVERY ONE OF YOU.'", log: "Burned into the floor: 'SHE REMEMBERS EVERY ONE OF YOU.'", effect: null }
+  ]
+];
+
 // ════════════════════════════════════════════════════
 // SECTION 3: UTILITY FUNCTIONS
 // ════════════════════════════════════════════════════
@@ -1416,6 +1573,8 @@ function sfxDeath()    { [220,196,165,147,110].forEach((f,i) => playNote(f,'sawt
 function sfxStep()     { playNote(100+Math.random()*40,'triangle',0.03,0.015); }
 function sfxDiceRoll() { for(let i=0;i<8;i++) playNote(800+Math.random()*400,'square',0.02,0.02,i*0.07); }
 function sfxCritical() { [880,1108,1320,1760].forEach((f,i) => playNote(f,'sawtooth',0.12,0.06,i*0.06)); playNote(440,'sine',0.3,0.04,0.3); }
+function sfxLoreOpen() { playNote(330,'sine',0.2,0.03); playNote(440,'sine',0.15,0.025,0.1); playNote(392,'sine',0.3,0.02,0.2); }
+function sfxEnvironmental() { playNote(80,'sine',0.5,0.02); playNote(120,'triangle',0.4,0.015,0.1); playNote(90,'sine',0.6,0.01,0.2); }
 
 // ── OLD-SCHOOL DUNGEON MUSIC ──
 // Procedural dark ambient / chiptune music that gets darker as you descend
@@ -1603,7 +1762,7 @@ function toggleMusic() {
 const GS = {
   TITLE:'title', CHAR_CREATE:'charCreate', PLAYING:'playing',
   INVENTORY:'inventory', CHARACTER:'character', LEVEL_UP:'levelUp',
-  TARGETING:'targeting', DEAD:'dead', HELP:'help', COMBAT:'combat'
+  TARGETING:'targeting', DEAD:'dead', HELP:'help', COMBAT:'combat', LORE:'lore'
 };
 
 let gameState = GS.TITLE;
@@ -1626,6 +1785,10 @@ let combatPhase = 'idle'; // idle, player_roll, player_result, monster_roll, mon
 let combatAnimating = false;
 let seenMonsters = new Set();
 let visitedRooms = new Set();
+
+// Lore overlay state
+let currentLoreItem = null;
+let loreTimer = null;
 
 // ════════════════════════════════════════════════════
 // SECTION 6: DUNGEON GENERATION
@@ -1875,6 +2038,23 @@ function spawnItems(rooms, floorLevel) {
       spawned.push(item);
     }
   }
+
+  // Spawn lore scroll for this floor (one per floor, in a non-starting room)
+  const loreEntry = LORE_SCROLLS.find(l => l.floor === floorLevel);
+  if (loreEntry) {
+    const loreRooms = rooms.filter((r, i) => i > 0);
+    if (loreRooms.length > 0) {
+      const room = pick(loreRooms);
+      const lx = rand(room.x + 1, room.x + room.w - 2);
+      const ly = rand(room.y + 1, room.y + room.h - 2);
+      spawned.push({
+        type: 'lore', name: loreEntry.name, title: loreEntry.title,
+        text: loreEntry.text, floor: loreEntry.floor,
+        ch: loreEntry.ch, color: loreEntry.color, value: 0, x: lx, y: ly
+      });
+    }
+  }
+
   return spawned;
 }
 
@@ -2283,7 +2463,21 @@ function addLog(msg) {
 }
 
 let cinematicTimer = null;
+let narrativeQueue = [];
 function addNarrative(msg) {
+  // If a cinematic is already playing, queue this one
+  if (cinematicTimer) {
+    narrativeQueue.push(msg);
+    // Still add to log immediately
+    const el = document.getElementById('message-log');
+    const logDiv = document.createElement('div');
+    logDiv.className = 'log-entry narrative';
+    logDiv.textContent = msg;
+    el.prepend(logDiv);
+    el.parentElement.scrollTop = 0;
+    return;
+  }
+
   // Add to log immediately (as italic narrative)
   const el = document.getElementById('message-log');
   const logDiv = document.createElement('div');
@@ -2293,8 +2487,11 @@ function addNarrative(msg) {
   el.parentElement.scrollTop = 0;
 
   // Cinematic overlay — typewriter across the map, then fade
+  playNarrativeCinematic(msg);
+}
+
+function playNarrativeCinematic(msg) {
   const cine = document.getElementById('cine-inner');
-  if (cinematicTimer) clearTimeout(cinematicTimer);
   cine.textContent = '';
   cine.className = 'cine-inner visible';
   let i = 0;
@@ -2309,6 +2506,11 @@ function addNarrative(msg) {
         cinematicTimer = setTimeout(() => {
           cine.className = 'cine-inner';
           cine.textContent = '';
+          cinematicTimer = null;
+          // Play next queued narrative if any
+          if (narrativeQueue.length > 0) {
+            playNarrativeCinematic(narrativeQueue.shift());
+          }
         }, 1600);
       }, 2000);
     }
@@ -2839,6 +3041,19 @@ function tryMove(dx, dy) {
       } else {
         visitedRooms.add(roomId);
       }
+      // Environmental event check (separate from room descriptions, rarer)
+      const envId = roomId + '_env';
+      if (!visitedRooms.has(envId)) {
+        visitedRooms.add(envId);
+        if (Math.random() < 0.25) {
+          const tier = player.floorLevel <= 3 ? 0 : player.floorLevel <= 6 ? 1 : player.floorLevel <= 9 ? 2 : 3;
+          const evt = pick(ENVIRONMENTAL_EVENTS[tier]);
+          sfxEnvironmental();
+          addNarrative(evt.text);
+          addLog(`<span class="log-info">${evt.log}</span>`);
+          if (evt.effect) applyEnvironmentalEffect(evt.effect);
+        }
+      }
       break;
     }
   }
@@ -2953,13 +3168,42 @@ function tryPickup() {
       return false;
     }
     player.inventory.push(item);
-    addLog(`<span class="log-item">You pick up: ${item.name}</span>`);
-    sfxPickup();
+    if (item.type === 'lore') {
+      addLog(`<span class="log-item" style="color:#d4a857">You find a weathered journal: ${item.name}</span>`);
+      addNarrative('You find a fragment of someone\'s journal, its pages yellowed and brittle...');
+      sfxLoreOpen();
+    } else {
+      addLog(`<span class="log-item">You pick up: ${item.name}</span>`);
+      sfxPickup();
+    }
   }
   // Remove from floor
   const idx = items.indexOf(item);
   if (idx >= 0) items.splice(idx, 1);
   return true;
+}
+
+function applyEnvironmentalEffect(effect) {
+  switch (effect) {
+    case 'coin1':
+      player.goldCollected += 1;
+      addLog('<span class="log-gold">You pocket the coin. (+1 Bitcoin)</span>');
+      sfxGold();
+      break;
+    case 'coin2':
+      player.goldCollected += 2;
+      addLog('<span class="log-gold">You pry the coin loose. (+2 Bitcoin)</span>');
+      sfxGold();
+      break;
+    case 'coin3':
+      player.goldCollected += 3;
+      addLog('<span class="log-gold">You gather the fallen coins. (+3 Bitcoin)</span>');
+      sfxGold();
+      break;
+    case 'chill':
+      addLog('<span class="log-player-hit">A supernatural chill settles into your bones.</span>');
+      break;
+  }
 }
 
 // ════════════════════════════════════════════════════
@@ -3217,6 +3461,10 @@ function getItemDescription(item) {
       html += `<span class="detail-label">Effect:</span> <span class="detail-stat">Reveals the entire floor map</span>`;
     }
     html += `<br><span class="detail-label">Value:</span> <span class="detail-stat">${item.value}</span>`;
+  } else if (item.type === 'lore') {
+    html += `<div style="color:#d4a857;font-family:'Crimson Text',serif;font-style:italic;font-size:12px;margin-top:4px;">${item.title}</div>`;
+    html += `<span class="detail-label">A journal fragment found on Floor ${item.floor}.</span>`;
+    html += `<br><span class="detail-label" style="font-size:10px;">Select to read the full entry.</span>`;
   }
 
   return html;
@@ -3230,7 +3478,8 @@ const INV_CATEGORIES = [
   { key: 'weapon', label: 'Weapons' },
   { key: 'armor',  label: 'Armor' },
   { key: 'potion', label: 'Potions' },
-  { key: 'scroll', label: 'Scrolls' }
+  { key: 'scroll', label: 'Scrolls' },
+  { key: 'lore',   label: 'Journals' }
 ];
 
 function buildInventoryStacks() {
@@ -3445,7 +3694,40 @@ function useItem(item, idx) {
       recalcAC();
       addLog('<span class="log-item">You don the ' + item.name + '.</span>');
     }
+  } else if (item.type === 'lore') {
+    showLoreOverlay(item);
   }
+}
+
+function showLoreOverlay(item) {
+  currentLoreItem = item;
+  gameState = GS.LORE;
+  document.getElementById('inventory-overlay').classList.add('hidden');
+  const overlay = document.getElementById('lore-overlay');
+  overlay.classList.remove('hidden');
+  document.getElementById('lore-title').textContent = item.title;
+
+  // Typewriter effect for the lore text
+  const textEl = document.getElementById('lore-text');
+  textEl.textContent = '';
+  let i = 0;
+  const fullText = item.text;
+  function typeLore() {
+    if (i < fullText.length) {
+      textEl.textContent += fullText[i++];
+      loreTimer = setTimeout(typeLore, 18 + Math.random() * 12);
+    }
+  }
+  sfxLoreOpen();
+  typeLore();
+}
+
+function closeLoreOverlay() {
+  if (loreTimer) { clearTimeout(loreTimer); loreTimer = null; }
+  document.getElementById('lore-overlay').classList.add('hidden');
+  currentLoreItem = null;
+  gameState = GS.INVENTORY;
+  showInventory();
 }
 
 // Help screen
@@ -3582,6 +3864,18 @@ function handleInput(e) {
       if (e.key === 'Escape' || e.key === '?') {
         document.getElementById('help-overlay').classList.add('hidden');
         gameState = GS.PLAYING;
+      }
+      break;
+
+    case GS.LORE:
+      if (e.key === 'Escape' || e.key === 'Enter') {
+        closeLoreOverlay();
+      } else if (e.key === ' ') {
+        // Space — skip typewriter, show full text
+        if (loreTimer) { clearTimeout(loreTimer); loreTimer = null; }
+        if (currentLoreItem) {
+          document.getElementById('lore-text').textContent = currentLoreItem.text;
+        }
       }
       break;
 
