@@ -1415,6 +1415,185 @@ function sfxStep()     { playNote(100+Math.random()*40,'triangle',0.03,0.015); }
 function sfxDiceRoll() { for(let i=0;i<8;i++) playNote(800+Math.random()*400,'square',0.02,0.02,i*0.07); }
 function sfxCritical() { [880,1108,1320,1760].forEach((f,i) => playNote(f,'sawtooth',0.12,0.06,i*0.06)); playNote(440,'sine',0.3,0.04,0.3); }
 
+// ── OLD-SCHOOL DUNGEON MUSIC ──
+// Procedural dark ambient / chiptune music that gets darker as you descend
+let musicPlaying = false;
+let musicTimeout = null;
+let musicNodes = [];      // active drone oscillators
+let musicMasterGain = null;
+let musicMuted = false;
+
+// Minor-key note sets per depth tier (frequencies in Hz)
+// Gets progressively lower and more dissonant as you go deeper
+const MUSIC_SCALES = [
+  // Tier 0: Floors 1-3 — A minor, eerie but recognizable
+  [110, 130.81, 146.83, 164.81, 196, 220, 261.63],
+  // Tier 1: Floors 4-6 — D minor, darker, lower
+  [73.42, 87.31, 98, 110, 130.81, 146.83, 164.81],
+  // Tier 2: Floors 7-9 — Diminished / dissonant, rumbling
+  [55, 65.41, 73.42, 82.41, 92.50, 103.83, 110],
+  // Tier 3: Floor 10 — Deep tritone dread
+  [41.20, 46.25, 55, 61.74, 69.30, 82.41, 92.50]
+];
+
+// Arpeggio patterns (index into scale)
+const MUSIC_PATTERNS = [
+  [0, 2, 4, 2],          // simple minor triad walk
+  [0, 3, 4, 6, 4, 3],    // ascending / descending
+  [0, 4, 2, 5, 0, 3],    // darker leaps
+  [0, 1, 0, 2, 0, 3],    // creeping chromatic
+  [6, 4, 2, 0],           // descending doom
+  [0, 2, 0, 4, 0, 6],    // pedal tone with rising
+];
+
+function getMusicTier(floor) {
+  if (floor <= 3) return 0;
+  if (floor <= 6) return 1;
+  if (floor <= 9) return 2;
+  return 3;
+}
+
+function startMusic(floorLevel) {
+  if (!audioCtx || musicMuted) return;
+  stopMusic();
+  musicPlaying = true;
+
+  // Master gain for music — keep it quiet, atmospheric
+  musicMasterGain = audioCtx.createGain();
+  musicMasterGain.gain.value = 0.035;
+  musicMasterGain.connect(audioCtx.destination);
+
+  const tier = getMusicTier(floorLevel);
+  const scale = MUSIC_SCALES[tier];
+
+  // Layer 1: Low drone — fundamental bass note
+  const droneFreq = scale[0];
+  startDrone(droneFreq, 'triangle', 0.6);
+  // Second drone a fifth above, quieter
+  startDrone(droneFreq * 1.498, 'sine', 0.2); // slightly detuned fifth for unease
+
+  // Layer 2: Slow arpeggio — square wave melody
+  const pattern = MUSIC_PATTERNS[Math.floor(Math.random() * MUSIC_PATTERNS.length)];
+  const tempo = 800 + tier * 200; // slower as you go deeper
+  let step = 0;
+  function playArpStep() {
+    if (!musicPlaying) return;
+    const noteIdx = pattern[step % pattern.length];
+    const freq = scale[noteIdx] * 2; // one octave up from bass
+    // Occasional octave jump for variety
+    const oct = Math.random() < 0.15 ? 2 : 1;
+    playMusicNote(freq * oct, 'square', tempo / 1000 * 0.6, 0.12);
+    // Occasional harmony note
+    if (Math.random() < 0.3) {
+      const harmIdx = (noteIdx + 2) % scale.length;
+      playMusicNote(scale[harmIdx] * 2 * oct, 'triangle', tempo / 1000 * 0.4, 0.06);
+    }
+    step++;
+    // Every 8 steps, chance to switch pattern
+    if (step % 8 === 0 && Math.random() < 0.4) {
+      step = 0;
+    }
+    // Occasional silence for tension
+    const nextDelay = Math.random() < 0.12 ? tempo * 2 : tempo;
+    musicTimeout = setTimeout(playArpStep, nextDelay);
+  }
+  // Start arp after a brief pause
+  musicTimeout = setTimeout(playArpStep, 1500);
+
+  // Layer 3: Random eerie accents — very sparse
+  startAccents(scale, tier);
+}
+
+function startDrone(freq, type, vol) {
+  if (!audioCtx || !musicMasterGain) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  // Slow LFO for subtle wobble
+  const lfo = audioCtx.createOscillator();
+  const lfoGain = audioCtx.createGain();
+  lfo.frequency.value = 0.3 + Math.random() * 0.4;
+  lfoGain.gain.value = freq * 0.008; // very subtle pitch wobble
+  lfo.connect(lfoGain);
+  lfoGain.connect(osc.frequency);
+  lfo.start();
+
+  gain.gain.value = vol;
+  osc.connect(gain);
+  gain.connect(musicMasterGain);
+  osc.start();
+  musicNodes.push(osc, lfo, gain);
+}
+
+function playMusicNote(freq, type, duration, vol) {
+  if (!audioCtx || !musicMasterGain) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  const t = audioCtx.currentTime;
+  gain.gain.setValueAtTime(0, t);
+  gain.gain.linearRampToValueAtTime(vol, t + 0.02);
+  gain.gain.setValueAtTime(vol, t + duration * 0.7);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+  osc.connect(gain);
+  gain.connect(musicMasterGain);
+  osc.start(t);
+  osc.stop(t + duration + 0.05);
+}
+
+let accentTimeout = null;
+function startAccents(scale, tier) {
+  function playAccent() {
+    if (!musicPlaying) return;
+    const roll = Math.random();
+    if (roll < 0.4) {
+      // High eerie tone
+      const freq = scale[Math.floor(Math.random() * scale.length)] * 4;
+      playMusicNote(freq, 'sine', 1.5 + Math.random(), 0.04);
+    } else if (roll < 0.65) {
+      // Low rumble
+      playMusicNote(scale[0] * 0.5, 'sawtooth', 2 + Math.random() * 2, 0.05);
+    } else if (roll < 0.8) {
+      // Dissonant stab — two close frequencies
+      const f = scale[Math.floor(Math.random() * scale.length)] * 2;
+      playMusicNote(f, 'square', 0.3, 0.08);
+      playMusicNote(f * 1.06, 'square', 0.3, 0.06); // dissonant
+    }
+    // else silence — nothing plays, adds tension
+    const nextDelay = 3000 + Math.random() * 6000 + tier * 1000;
+    accentTimeout = setTimeout(playAccent, nextDelay);
+  }
+  accentTimeout = setTimeout(playAccent, 2000 + Math.random() * 3000);
+}
+
+function stopMusic() {
+  musicPlaying = false;
+  if (musicTimeout) { clearTimeout(musicTimeout); musicTimeout = null; }
+  if (accentTimeout) { clearTimeout(accentTimeout); accentTimeout = null; }
+  musicNodes.forEach(node => {
+    try { node.stop ? node.stop() : node.disconnect(); } catch(e) {}
+  });
+  musicNodes = [];
+  if (musicMasterGain) {
+    try { musicMasterGain.disconnect(); } catch(e) {}
+    musicMasterGain = null;
+  }
+}
+
+function toggleMusic() {
+  if (musicMuted) {
+    musicMuted = false;
+    startMusic(player.floorLevel);
+    addLog('<span class="log-info">♫ Music on</span>');
+  } else {
+    musicMuted = true;
+    stopMusic();
+    addLog('<span class="log-info">♫ Music off</span>');
+  }
+}
+
 // ════════════════════════════════════════════════════
 // SECTION 5: GAME STATE
 // ════════════════════════════════════════════════════
@@ -2083,6 +2262,7 @@ function renderSidebar() {
   html += '<div class="hint-line"><kbd>.</kbd> Wait</div>';
   html += '<div class="hint-line"><kbd>g</kbd> Pick up</div>';
   html += '<div class="hint-line"><kbd>i</kbd> Inventory</div>';
+  html += '<div class="hint-line"><kbd>m</kbd> Music</div>';
   html += '<div class="hint-line"><kbd>?</kbd> Help</div>';
   html += '</div>';
 
@@ -2195,6 +2375,11 @@ function enterFloor(floorLevel, fromStairs) {
 
   const desc = pick(FLOOR_DESCRIPTIONS[floorLevel] || FLOOR_DESCRIPTIONS[1]);
   setTimeout(() => addNarrative(desc), 300);
+
+  // Restart music with new floor's tone
+  if (musicPlaying || (!musicMuted && floorLevel >= 1)) {
+    startMusic(floorLevel);
+  }
 }
 
 function fadeTransition(callback) {
@@ -2964,7 +3149,9 @@ function startGame() {
 
   enterFloor(1, null);
   addLog('<span class="log-info">Welcome, ' + player.name + '. Your descent begins.</span>');
+  addLog('<span class="log-info">Press M to toggle music.</span>');
   renderAll();
+  startMusic(1);
   gameState = GS.PLAYING;
 }
 
@@ -3216,6 +3403,7 @@ function showHelp() {
       <div class="help-row"><kbd>&gt;</kbd><span>Descend stairs</span></div>
       <div class="help-row"><kbd>&lt;</kbd><span>Ascend stairs</span></div>
       <div class="help-row"><kbd>i</kbd><span>Open inventory</span></div>
+      <div class="help-row"><kbd>m</kbd><span>Toggle music</span></div>
       <div class="help-row"><kbd>?</kbd><span>This help screen</span></div>
     </div>
     <div class="help-section"><h3>COMBAT</h3>
@@ -3258,6 +3446,7 @@ function handleLevelUpInput(e) {
 
 // Death screen
 function showDeathScreen() {
+  stopMusic();
   document.getElementById('game-layout').style.display = 'none';
   document.getElementById('death-overlay').classList.remove('hidden');
 
@@ -3370,6 +3559,7 @@ function handlePlayingInput(e) {
     case '<': acted = tryAscend(); break;
     case 'g': case ',': acted = tryPickup(); break;
     case 'i': showInventory(); return;
+    case 'm': toggleMusic(); return;
     case '?': showHelp(); return;
     default: return;
   }
