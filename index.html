@@ -485,6 +485,25 @@
   .inv-item .inv-name { color: var(--item-common); }
   .inv-item .inv-name.equipped { color: var(--player); }
   .inv-item .inv-type { color: var(--text-faded); font-size: 10px; }
+  .inv-detail {
+    margin-top: 10px;
+    padding: 10px 12px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-family: 'Fira Code', monospace;
+    font-size: 11px;
+    line-height: 1.7;
+    min-height: 42px;
+    color: var(--text-faded);
+  }
+  .inv-detail:empty { display: none; }
+  .inv-detail .detail-name { color: var(--item-common); font-size: 12px; font-weight: bold; margin-bottom: 4px; }
+  .inv-detail .detail-name.magic { color: var(--item-magic); }
+  .inv-detail .detail-stat { color: var(--text-main); }
+  .inv-detail .detail-label { color: var(--text-faded); }
+  .inv-detail .detail-highlight { color: var(--accent); }
+  .inv-detail .detail-compare { color: var(--xp); font-size: 10px; }
   .inv-footer { color: var(--text-faded); font-size: 11px; margin-top: 12px; }
 
   /* Help overlay */
@@ -733,6 +752,7 @@
   <div id="inventory-screen">
     <h2>INVENTORY</h2>
     <div class="inv-list" id="inv-list"></div>
+    <div class="inv-detail" id="inv-detail"></div>
     <div class="inv-footer" id="inv-footer"></div>
   </div>
 </div>
@@ -2800,10 +2820,68 @@ function startGame() {
 }
 
 // Inventory screen
+let inspectedItem = null;
+
 function showInventory() {
   gameState = GS.INVENTORY;
+  inspectedItem = null;
+  document.getElementById('inv-detail').innerHTML = '<span class="detail-label">Press TAB + letter to inspect an item</span>';
   document.getElementById('inventory-overlay').classList.remove('hidden');
   renderInventory();
+}
+
+function getItemDescription(item) {
+  let html = '';
+  const isMagic = item.enchant && item.enchant > 0;
+  html += `<div class="detail-name${isMagic ? ' magic' : ''}">${item.name}</div>`;
+
+  if (item.type === 'weapon') {
+    const dice = `${item.dmg[0]}d${item.dmg[1]}${item.dmg[2] ? '+' + item.dmg[2] : ''}`;
+    const enchStr = item.enchant ? ` <span class="detail-highlight">+${item.enchant}</span>` : '';
+    html += `<span class="detail-label">Damage:</span> <span class="detail-stat">${dice}${enchStr}</span>`;
+    html += ` &nbsp; <span class="detail-label">Stat:</span> <span class="detail-stat">${item.stat.toUpperCase()}</span>`;
+    html += `<br><span class="detail-label">Weight:</span> <span class="detail-stat">${item.weight}</span>`;
+    html += ` &nbsp; <span class="detail-label">Value:</span> <span class="detail-stat">${item.value}</span>`;
+    // Compare with equipped weapon
+    const cur = player.equipment.weapon;
+    if (cur && cur !== item) {
+      const curDice = `${cur.dmg[0]}d${cur.dmg[1]}${cur.dmg[2] ? '+' + cur.dmg[2] : ''}`;
+      html += `<br><span class="detail-compare">Equipped: ${cur.name} (${curDice}${cur.enchant ? ' +' + cur.enchant : ''})</span>`;
+    }
+  } else if (item.type === 'armor') {
+    const enchStr = item.enchant ? ` <span class="detail-highlight">+${item.enchant}</span>` : '';
+    html += `<span class="detail-label">AC Bonus:</span> <span class="detail-stat">+${item.acBonus}${enchStr}</span>`;
+    html += ` &nbsp; <span class="detail-label">DEX Cap:</span> <span class="detail-stat">${item.dexCap >= 99 ? 'None' : '+' + item.dexCap}</span>`;
+    html += `<br><span class="detail-label">Weight:</span> <span class="detail-stat">${item.weight}</span>`;
+    html += ` &nbsp; <span class="detail-label">Value:</span> <span class="detail-stat">${item.value}</span>`;
+    // Compare with equipped armor
+    const cur = player.equipment.armor;
+    if (cur && cur !== item) {
+      html += `<br><span class="detail-compare">Equipped: ${cur.name} (AC +${cur.acBonus}${cur.enchant ? ' +' + cur.enchant : ''}, DEX cap ${cur.dexCap >= 99 ? 'None' : '+' + cur.dexCap})</span>`;
+    }
+  } else if (item.type === 'potion') {
+    if (item.effect === 'heal') {
+      const dice = `${item.amount[0]}d${item.amount[1]}+${item.amount[2]}`;
+      html += `<span class="detail-label">Heals:</span> <span class="detail-stat">${dice} HP</span>`;
+    } else if (item.effect === 'buff_str') {
+      html += `<span class="detail-label">Effect:</span> <span class="detail-stat">+4 STR for ${item.duration} turns</span>`;
+    } else if (item.effect === 'buff_dex') {
+      html += `<span class="detail-label">Effect:</span> <span class="detail-stat">+4 DEX for ${item.duration} turns</span>`;
+    }
+    html += `<br><span class="detail-label">Value:</span> <span class="detail-stat">${item.value}</span>`;
+  } else if (item.type === 'scroll') {
+    if (item.effect === 'fireball') {
+      const dice = `${item.damage[0]}d${item.damage[1]}`;
+      html += `<span class="detail-label">Effect:</span> <span class="detail-stat">Fireball \u2014 ${dice} fire damage to all visible enemies</span>`;
+    } else if (item.effect === 'teleport') {
+      html += `<span class="detail-label">Effect:</span> <span class="detail-stat">Teleport to a random room</span>`;
+    } else if (item.effect === 'reveal_map') {
+      html += `<span class="detail-label">Effect:</span> <span class="detail-stat">Reveals the entire floor map</span>`;
+    }
+    html += `<br><span class="detail-label">Value:</span> <span class="detail-stat">${item.value}</span>`;
+  }
+
+  return html;
 }
 
 function renderInventory() {
@@ -2817,27 +2895,88 @@ function renderInventory() {
     player.inventory.forEach((item, i) => {
       const letter = String.fromCharCode(97 + i);
       const equipped = Object.values(player.equipment).includes(item);
-      html += `<div class="inv-item">
+      const inspecting = inspectedItem === item;
+      html += `<div class="inv-item" style="${inspecting ? 'background:var(--bg-surface);' : ''}">
         <span><span class="inv-key">${letter})</span> <span class="inv-name${equipped ? ' equipped' : ''}">${item.name}${equipped ? ' (equipped)' : ''}</span></span>
         <span class="inv-type">${item.type}</span>
       </div>`;
     });
     list.innerHTML = html;
   }
-  footer.textContent = `${player.inventory.length}/${MAX_INVENTORY} — [a-t] use/equip — [d]+letter drop — [ESC] close`;
+  footer.textContent = `${player.inventory.length}/${MAX_INVENTORY} — [a-t] use/equip — [TAB]+letter inspect — [x]+letter drop — [ESC] close`;
 }
+
+let inventoryDropMode = false;
+let inventoryInspectMode = false;
 
 function handleInventoryInput(e) {
   if (e.key === 'Escape' || e.key === 'i') {
+    inventoryDropMode = false;
+    inventoryInspectMode = false;
     document.getElementById('inventory-overlay').classList.add('hidden');
     gameState = GS.PLAYING;
     return;
   }
 
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    inventoryInspectMode = !inventoryInspectMode;
+    inventoryDropMode = false;
+    const footer = document.getElementById('inv-footer');
+    if (inventoryInspectMode) {
+      footer.textContent = 'INSPECT MODE: press a-t to inspect an item — [TAB] cancel';
+    } else {
+      inspectedItem = null;
+      document.getElementById('inv-detail').innerHTML = '<span class="detail-label">Press TAB + letter to inspect an item</span>';
+      footer.textContent = `${player.inventory.length}/${MAX_INVENTORY} — [a-t] use/equip — [TAB]+letter inspect — [x]+letter drop — [ESC] close`;
+      renderInventory();
+    }
+    return;
+  }
+
+  if (e.key === 'x') {
+    inventoryDropMode = !inventoryDropMode;
+    inventoryInspectMode = false;
+    const footer = document.getElementById('inv-footer');
+    if (inventoryDropMode) {
+      footer.textContent = 'DROP MODE: press a-t to drop an item — [x] cancel';
+    } else {
+      footer.textContent = `${player.inventory.length}/${MAX_INVENTORY} — [a-t] use/equip — [TAB]+letter inspect — [x]+letter drop — [ESC] close`;
+    }
+    return;
+  }
+
   const idx = e.key.charCodeAt(0) - 97;
   if (idx >= 0 && idx < player.inventory.length) {
-    const item = player.inventory[idx];
-    useItem(item, idx);
+    if (inventoryInspectMode) {
+      const item = player.inventory[idx];
+      inspectedItem = item;
+      document.getElementById('inv-detail').innerHTML = getItemDescription(item);
+      inventoryInspectMode = false;
+      const footer = document.getElementById('inv-footer');
+      footer.textContent = `${player.inventory.length}/${MAX_INVENTORY} — [a-t] use/equip — [TAB]+letter inspect — [x]+letter drop — [ESC] close`;
+      renderInventory();
+      return;
+    } else if (inventoryDropMode) {
+      const item = player.inventory[idx];
+      // Unequip if currently equipped
+      for (const slot of ['weapon','armor','shield','ring','amulet']) {
+        if (player.equipment[slot] === item) {
+          player.equipment[slot] = null;
+          recalcAC();
+        }
+      }
+      // Place item on the ground at player's position
+      item.x = player.x;
+      item.y = player.y;
+      items.push(item);
+      player.inventory.splice(idx, 1);
+      addLog(`<span class="log-info">You drop the ${item.name}.</span>`);
+      inventoryDropMode = false;
+    } else {
+      const item = player.inventory[idx];
+      useItem(item, idx);
+    }
     renderInventory();
     renderStats();
   }
