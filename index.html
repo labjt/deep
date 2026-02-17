@@ -355,6 +355,31 @@
   }
   #fade-overlay.active { opacity: 1; }
 
+  /* Cinematic narrative overlay */
+  #cinematic-text {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 50;
+  }
+  #cinematic-text .cine-inner {
+    font-family: 'Crimson Text', serif;
+    font-style: italic;
+    font-size: 20px;
+    color: var(--text-bright);
+    text-align: center;
+    max-width: 70%;
+    line-height: 1.6;
+    text-shadow: 0 0 20px rgba(0,0,0,0.9), 0 0 40px rgba(0,0,0,0.7);
+    opacity: 0;
+    transition: opacity 0.6s ease;
+  }
+  #cinematic-text .cine-inner.visible { opacity: 1; }
+  #cinematic-text .cine-inner.fade-out { opacity: 0; transition: opacity 1.5s ease; }
+
   /* Character creation */
   #char-create-screen {
     max-width: 600px;
@@ -840,8 +865,9 @@
   </div>
 
   <!-- Dungeon Map -->
-  <div id="map-panel" class="panel">
+  <div id="map-panel" class="panel" style="position:relative;">
     <div id="dungeon-map"></div>
+    <div id="cinematic-text"><div class="cine-inner" id="cine-inner"></div></div>
   </div>
 
   <!-- Sidebar -->
@@ -897,26 +923,76 @@ const FLOOR_NAMES = [
 
 const FLOOR_DESCRIPTIONS = [
   [],
+  // Floor 1 — The Entrance
   ['The entrance to the dungeon yawns before you. Torchlight barely penetrates the gloom.',
-   'Cold stone steps lead down into darkness. Water drips somewhere ahead.'],
+   'Cold stone steps lead down into darkness. Water drips somewhere ahead.',
+   'A stale breeze carries the scent of earth and forgotten places.',
+   'Rough-hewn stairs descend into the dark. The world above already feels distant.',
+   'The last light of the surface fades behind you. There is only forward now.',
+   'Bootprints in the dust — others have come this way. None returned.'],
+  // Floor 2 — Upper Caverns
   ['The walls here are slick with moisture. Something scurries in the shadows.',
-   'Fungal growths emit a faint bioluminescence along the corridor walls.'],
+   'Fungal growths emit a faint bioluminescence along the corridor walls.',
+   'The passage narrows. Your shoulders brush cold stone on both sides.',
+   'A distant echo — was that a voice, or just the wind through cracks?',
+   'The air is heavier here, thick with the smell of damp and decay.',
+   'Roots from the world above pierce the ceiling like grasping fingers.'],
+  // Floor 3 — The Whispering Dark
   ['A low moan echoes through the stone corridors. The air tastes of copper.',
-   'Whispers seem to emanate from the very walls themselves.'],
+   'Whispers seem to emanate from the very walls themselves.',
+   'The darkness presses in like a living thing. Your torch feels smaller.',
+   'Old blood stains the floor in a trail leading deeper.',
+   'The silence between your footsteps is absolute and terrible.',
+   'A draft carries the faintest hint of something sweet and rotting.'],
+  // Floor 4 — The Catacombs
   ['Bones crunch underfoot. This place reeks of death.',
-   'Skeletal remains line the walls in grotesque arrangements.'],
+   'Skeletal remains line the walls in grotesque arrangements.',
+   'Row upon row of burial niches stretch into the darkness. Most are empty.',
+   'The dead were stacked here without ceremony. This is a place of forgetting.',
+   'Funerary inscriptions cover every surface, names worn to nothing by time.',
+   'A cold that has nothing to do with temperature settles into your bones.'],
+  // Floor 5 — The Drowned Halls
   ['Water pools on the floor, black and still. Something moves beneath.',
-   'The ceiling drips ceaselessly. Your torchlight reflects off dark water.'],
+   'The ceiling drips ceaselessly. Your torchlight reflects off dark water.',
+   'Water runs down the walls in sheets. The floor is treacherous and slick.',
+   'An underground river roars somewhere behind the walls.',
+   'The waterline on the stone is well above your head. This place floods.',
+   'Pale eyeless fish dart away from your torchlight in the shallows.'],
+  // Floor 6 — The Iron Warrens
   ['Rusted iron chains hang from the walls. The ring of distant hammers echoes.',
-   'Abandoned mine carts sit on corroded rails. The air is thick with dust.'],
+   'Abandoned mine carts sit on corroded rails. The air is thick with dust.',
+   'Someone built a civilization here once. Now only rust and silence remain.',
+   'Iron doors hang off their hinges. Whatever was locked in is long gone.',
+   'The floor is riveted iron plate. Your every step rings out like a bell.',
+   'Machine parts litter the ground — gears, pistons, things with no name.'],
+  // Floor 7 — The Abyss Edge
   ['The ground drops away into impossible darkness. A hot wind rises from below.',
-   'Cracks in the earth glow with a sullen red light.'],
+   'Cracks in the earth glow with a sullen red light.',
+   'The world feels thin here, as if reality itself is wearing through.',
+   'A tremor runs through the stone. The deep places are restless.',
+   'You stand at the edge of the world above. Below is something older.',
+   'The air shimmers with heat. Your throat burns with every breath.'],
+  // Floor 8 — The Furnace
   ['Heat shimmers the air. The stone walls are warm to the touch.',
-   'Rivers of molten rock carve channels through the chamber floors.'],
+   'Rivers of molten rock carve channels through the chamber floors.',
+   'The heat is a physical force pressing against you from all sides.',
+   'Volcanic vents hiss and spit. The air reeks of sulfur.',
+   'The stone beneath your feet pulses with a deep, slow rhythm.',
+   'Shadows dance in the firelight. Not all of them are yours.'],
+  // Floor 9 — The Obsidian Depths
   ['Black glass walls reflect your torchlight in strange patterns.',
-   'The obsidian surfaces seem to absorb sound itself.'],
+   'The obsidian surfaces seem to absorb sound itself.',
+   'Your distorted reflection stares back from every surface, always a moment behind.',
+   'The glass walls show things that are not in this room.',
+   'Silence so complete you can hear your own heartbeat echo.',
+   'Obsidian shards crunch underfoot like black snow.'],
+  // Floor 10 — The Dragon's Sanctum
   ['The stench of sulfur is overwhelming. Treasure gleams in impossible heaps.',
-   'Scorched stone and the rumble of something ancient stirring.']
+   'Scorched stone and the rumble of something ancient stirring.',
+   'The walls are scarred by claws wider than you are tall.',
+   'A low vibration fills the air — breathing. Something enormous breathes here.',
+   'Bitcoin tokens litter the floor like scales shed from a golden beast.',
+   'The heat is unbearable. The air itself seems to ignite.']
 ];
 
 // ════════════════════════════════════════════════════
@@ -1145,7 +1221,22 @@ const ROOM_DESCRIPTIONS = [
     'Old bones lie scattered — animal, you hope.',
     'Torchlight catches something glinting in a wall crevice.',
     'The echo of your footsteps sounds wrong here, as if the room is larger than it appears.',
-    'Cobwebs hang in thick curtains across the doorway.'
+    'Cobwebs hang in thick curtains across the doorway.',
+    'A pool of stagnant water reflects your face, pale and drawn.',
+    'Scratching sounds come from inside the walls. Then silence.',
+    'The air is still and stale. Nothing has breathed here in a long time.',
+    'Broken pottery and shattered glass crunch beneath your boots.',
+    'A wooden door lies splintered on the ground, torn from its hinges.',
+    'Pale cave crickets scatter from your torchlight in a wave.',
+    'Faint daylight filters through a crack far above. So close, yet unreachable.',
+    'A rusted grate covers a shaft descending into deeper darkness.',
+    'The walls are scarred with claw marks at varying heights.',
+    'Someone carved "TURN BACK" into the stone in shaking letters.',
+    'A skeleton sits propped against the wall, a dagger still clutched in its hand.',
+    'The room smells of wet earth and rotting wood.',
+    'Your torch sputters. The darkness leans in, eager.',
+    'Chisel marks cover the ceiling — an unfinished expansion, abandoned.',
+    'A trickle of water follows a groove worn into the floor over centuries.'
   ],
   // Tier 1: Floors 4-6 — Crypts and warrens
   [
@@ -1163,7 +1254,22 @@ const ROOM_DESCRIPTIONS = [
     'A statue of a weeping figure guards this room, its face worn smooth.',
     'Chains dangle from the walls. This was a prison once.',
     'The walls seep moisture that smells faintly of copper.',
-    'Faded murals depict scenes of judgment and descent.'
+    'Faded murals depict scenes of judgment and descent.',
+    'A sarcophagus lies open and empty. The occupant left on its own.',
+    'Prayer beads are scattered across the floor like discarded teeth.',
+    'The ceiling is painted with stars — a sky for the dead to gaze upon.',
+    'Hooded statues stand in silent vigil along the walls.',
+    'A well descends into absolute blackness. You drop a stone. No sound returns.',
+    'Scratches on the inside of a coffin lid. Someone woke up down here.',
+    'The air is thick with incense that has no source.',
+    'Grave dirt is piled at the entrance. Something was digging its way out.',
+    'A bell rope hangs from the ceiling, attached to nothing above.',
+    'The dead here were buried with their weapons drawn.',
+    'An embalming table sits in the center, its leather straps cracked with age.',
+    'Candle wax has pooled across the floor in strange, deliberate patterns.',
+    'A mirror mounted on the wall reflects a room that is not this one.',
+    'The sound of weeping echoes from somewhere you cannot find.',
+    'Iron-bound books sit chained to stone lecterns, their pages turned to dust.'
   ],
   // Tier 2: Floors 7-9 — Deep/volcanic
   [
@@ -1181,7 +1287,22 @@ const ROOM_DESCRIPTIONS = [
     'A forge sits cold and dark, but the metal on its anvil still glows faintly.',
     'The ceiling is impossibly high here, lost in darkness above.',
     'Something massive gouged claw marks into the stone floor.',
-    'The air crackles with residual magic. Your hair stands on end.'
+    'The air crackles with residual magic. Your hair stands on end.',
+    'A river of magma flows beneath a stone bridge barely wide enough for one.',
+    'Crystallized bones jut from the volcanic rock — fossils from an older age.',
+    'The floor is etched with a vast arcane circle, still faintly glowing.',
+    'A pillar of basalt has been carved into a screaming face.',
+    'Veins of gold run through the stone like arteries through flesh.',
+    'The heat makes your armor almost too hot to wear.',
+    'Something vast shifts beneath the floor. Dust rains from above.',
+    'A dwarven throne sits before a collapsed tunnel, its occupant long gone.',
+    'Runes pulse in the walls, dimming as you approach, brightening as you leave.',
+    'Stalactites of black glass hang like frozen daggers overhead.',
+    'An underground lake of molten rock bathes the chamber in hellish light.',
+    'The remains of a camp — bedrolls, cold cookfire. Whoever was here left in a hurry.',
+    'Ancient chains thick as your arm are bolted into the floor. What were they holding?',
+    'The temperature drops suddenly. Frost forms on volcanic glass — wrong, all wrong.',
+    'A perfectly circular hole in the floor descends straight down. Something breathes below.'
   ],
   // Tier 3: Floor 10 — Dragon's domain
   [
@@ -1189,7 +1310,17 @@ const ROOM_DESCRIPTIONS = [
     'Scorched skeletons of adventurers line the walls — a warning.',
     'The heat is nearly unbearable. The very air seems to burn.',
     'Treasure beyond imagining glitters in the firelight.',
-    'The walls bear the marks of dragon fire — stone melted and reformed.'
+    'The walls bear the marks of dragon fire — stone melted and reformed.',
+    'Claw marks as wide as doorways score the stone floor.',
+    'A half-melted suit of plate armor lies crumpled against the wall.',
+    'The ceiling is blackened with centuries of dragon fire.',
+    'Coins and gems are fused into the stone floor by ancient heat.',
+    'The bones of heroes are arranged around the chamber like trophies.',
+    'A low rumble shakes loose dust. The beast knows you are here.',
+    'The air tastes of ash and endings. This is where adventurers come to die.',
+    'A broken sword of legendary make lies shattered among the Bitcoin.',
+    'Scales the size of shields are embedded in the walls.',
+    'The stench of sulfur and wealth mingles into something almost sweet.'
   ]
 ];
 
@@ -1965,24 +2096,42 @@ function addLog(msg) {
   const div = document.createElement('div');
   div.className = 'log-entry';
   div.innerHTML = msg;
-  el.appendChild(div);
-  el.scrollTop = el.scrollHeight;
+  el.prepend(div);
+  el.parentElement.scrollTop = 0;
 }
 
+let cinematicTimer = null;
 function addNarrative(msg) {
+  // Add to log immediately (as italic narrative)
   const el = document.getElementById('message-log');
-  const div = document.createElement('div');
-  div.className = 'log-entry narrative';
-  el.appendChild(div);
+  const logDiv = document.createElement('div');
+  logDiv.className = 'log-entry narrative';
+  logDiv.textContent = msg;
+  el.prepend(logDiv);
+  el.parentElement.scrollTop = 0;
+
+  // Cinematic overlay — typewriter across the map, then fade
+  const cine = document.getElementById('cine-inner');
+  if (cinematicTimer) clearTimeout(cinematicTimer);
+  cine.textContent = '';
+  cine.className = 'cine-inner visible';
   let i = 0;
-  function type() {
+  function typeCine() {
     if (i < msg.length) {
-      div.textContent += msg[i++];
-      el.scrollTop = el.scrollHeight;
-      setTimeout(type, 18 + Math.random() * 12);
+      cine.textContent += msg[i++];
+      cinematicTimer = setTimeout(typeCine, 30 + Math.random() * 20);
+    } else {
+      // Hold for a moment, then fade out
+      cinematicTimer = setTimeout(() => {
+        cine.className = 'cine-inner fade-out';
+        cinematicTimer = setTimeout(() => {
+          cine.className = 'cine-inner';
+          cine.textContent = '';
+        }, 1600);
+      }, 2000);
     }
   }
-  type();
+  typeCine();
 }
 
 function renderAll() {
@@ -2496,7 +2645,7 @@ function tryMove(dx, dy) {
     const r = currentRooms[i];
     if (nx >= r.x && nx < r.x + r.w && ny >= r.y && ny < r.y + r.h) {
       const roomId = player.floorLevel + '_' + i;
-      if (!visitedRooms.has(roomId) && Math.random() < 0.4) {
+      if (!visitedRooms.has(roomId) && Math.random() < 0.7) {
         visitedRooms.add(roomId);
         const tier = player.floorLevel <= 3 ? 0 : player.floorLevel <= 6 ? 1 : player.floorLevel <= 9 ? 2 : 3;
         addNarrative(pick(ROOM_DESCRIPTIONS[tier]));
