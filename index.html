@@ -3246,7 +3246,7 @@ let inventoryDropMode = false;
 let inventoryInspectMode = false;
 
 function handleInventoryInput(e) {
-  if (e.key === 'Escape' || e.key === 'i') {
+  if (e.key === 'Escape') {
     inventoryDropMode = false;
     inventoryInspectMode = false;
     document.getElementById('inventory-overlay').classList.add('hidden');
